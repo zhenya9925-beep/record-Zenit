@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Система учета складской продукции — ВК Зенит</title>
+    <title>Система учета складской продукции — ВК "Зенит - Санкт-Петербург"</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -179,6 +179,62 @@
         .product-search-item:last-child {
             border-bottom: none;
         }
+    
+        /* MOBILE RESPONSIVE */
+        @media (max-width: 1024px) {
+            .ml-64 { margin-left: 0; }
+            aside { transform: translateX(-100%); transition: transform 0.3s ease; }
+            aside.mobile-open { transform: translateX(0); }
+            .mobile-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 35; }
+            .mobile-overlay.active { display: block; }
+
+            /* Make cards stack better */
+            .grid-cols-4 { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 640px) {
+            .grid-cols-4 { grid-template-columns: 1fr; }
+            .grid-cols-2 { grid-template-columns: 1fr; }
+
+            /* Full screen modals on mobile */
+            #order-modal .max-w-4xl,
+            #product-modal .max-w-lg,
+            #employee-modal .max-w-lg,
+            #account-modal .max-w-lg,
+            #order-details-modal .max-w-2xl {
+                max-width: 100%;
+                max-height: 100vh;
+                border-radius: 0;
+                margin: 0;
+            }
+
+            /* Touch friendly buttons */
+            button, select, input { min-height: 44px; }
+
+            /* Better table scrolling */
+            .overflow-x-auto { -webkit-overflow-scrolling: touch; }
+
+            /* Sidebar user block smaller */
+            #current-user-name { font-size: 0.8rem; }
+        }
+
+        /* Burger menu button */
+        .burger-btn {
+            display: none;
+            width: 40px;
+            height: 40px;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            color: #0066CC;
+            font-size: 1.2rem;
+        }
+        @media (max-width: 1024px) {
+            .burger-btn { display: flex; }
+        }
+
     </style>
 </head>
 <body class="text-slate-800">
@@ -190,7 +246,7 @@
                 <div class="w-20 h-20 rounded-full flex items-center justify-center text-white shadow-lg mx-auto mb-4" style="background: linear-gradient(135deg, #0066CC 0%, #00AEEF 100%);">
                     <i class="fas fa-volleyball-ball text-3xl"></i>
                 </div>
-                <h1 class="text-2xl font-bold text-slate-800">ВК Зенит</h1>
+                <h1 class="text-2xl font-bold text-slate-800">ВК "Зенит - Санкт-Петербург"</h1>
                 <p class="text-sm text-slate-500 mt-1">Система учета складской продукции</p>
             </div>
 
@@ -212,13 +268,22 @@
                 <button onclick="performLogin()" class="w-full btn-zenit text-white py-3 rounded-lg font-medium shadow-lg">
                     Войти
                 </button>
+                <div class="mt-4 text-center">
+                    <div class="relative flex items-center py-2">
+                        <div class="flex-grow border-t border-slate-200"></div>
+                        <span class="flex-shrink-0 mx-4 text-xs text-slate-400">или</span>
+                        <div class="flex-grow border-t border-slate-200"></div>
+                    </div>
+                    <button onclick="performGuestLogin()" class="w-full mt-2 bg-white border-2 border-zenit-500 text-zenit-600 hover:bg-zenit-50 py-3 rounded-lg font-medium transition-all hover:scale-[1.02]">
+                        <i class="fas fa-user-clock mr-2"></i>Войти как гость
+                    </button>
+                    <p class="text-xs text-slate-400 mt-2">Просмотр заявок в ожидании и оформление новых</p>
+                </div>
                 <p id="login-error" class="text-red-500 text-sm text-center mt-3 hidden">Неверный логин или пароль</p>
             </div>
 
             <div class="mt-6 pt-4 border-t border-slate-100 text-center">
-                <p class="text-xs text-slate-400">Демо-данные:</p>
-                <p class="text-xs text-slate-500 mt-1">Админ: <span class="font-mono">admin / admin123</span></p>
-                <p class="text-xs text-slate-500">Сотрудник: <span class="font-mono">ivanov / pass123</span></p>
+                <p class="text-xs text-slate-400">Введите ваши учетные данные</p>
             </div>
         </div>
     </div>
@@ -233,7 +298,7 @@
                         <i class="fas fa-volleyball-ball text-xl"></i>
                     </div>
                     <div>
-                        <h1 class="font-bold text-lg leading-tight">ВК Зенит</h1>
+                        <h1 class="font-bold text-lg leading-tight">ВК "Зенит - Санкт-Петербург"</h1>
                         <p class="text-xs text-slate-500">Склад</p>
                     </div>
                 </div>
@@ -289,6 +354,7 @@
                 </button>
             </div>
         </aside>
+    <div id="mobile-overlay" class="mobile-overlay" onclick="toggleMobileSidebar()"></div>
 
         <!-- Main Content -->
         <main class="ml-64 min-h-screen">
@@ -296,7 +362,10 @@
             <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
                 <div class="flex items-center justify-between px-8 py-4">
                     <div class="flex items-center gap-4">
-                        <h2 id="page-title" class="text-xl font-bold text-slate-800">Дашборд</h2>
+                        <button onclick="toggleMobileSidebar()" class="burger-btn mr-3 lg:hidden">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h2 id="page-title" class="text-xl font-bold text-slate-800">Дашборд</h2>
                         <span id="current-date" class="text-sm text-slate-500"></span>
                     </div>
                     <div class="flex items-center gap-3">
@@ -389,7 +458,7 @@
                                     <thead class="bg-slate-50 text-slate-600">
                                         <tr>
                                             <th class="px-6 py-3 text-left font-medium">Товар</th>
-                                            <th class="px-6 py-3 text-left font-medium">Артикул</th>
+                                            <th class="px-6 py-3 text-left font-medium">Категория</th>
                                             <th class="px-6 py-3 text-left font-medium">Остаток</th>
                                         </tr>
                                     </thead>
@@ -472,7 +541,6 @@
                             <table class="w-full text-sm">
                                 <thead class="bg-slate-50 text-slate-600">
                                     <tr>
-                                        <th class="px-6 py-3 text-left font-medium">Артикул</th>
                                         <th class="px-6 py-3 text-left font-medium">Наименование</th>
                                         <th class="px-6 py-3 text-left font-medium">Категория</th>
                                         <th class="px-6 py-3 text-left font-medium">Остаток</th>
@@ -547,7 +615,6 @@
                                     <thead class="bg-slate-50 text-slate-600">
                                         <tr>
                                             <th class="px-6 py-3 text-left font-medium">Товар</th>
-                                            <th class="px-6 py-3 text-left font-medium">Артикул</th>
                                             <th class="px-6 py-3 text-left font-medium">Категория</th>
                                             <th class="px-6 py-3 text-left font-medium">Выдано (шт.)</th>
                                             <th class="px-6 py-3 text-left font-medium">Кол-во заявок</th>
@@ -742,12 +809,8 @@
                 </div>
                 <div class="p-6 space-y-4">
                     <input type="hidden" id="product-id">
-                    <div class="bg-slate-50 rounded-lg p-3 border border-slate-200">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Артикул</label>
-                        <p class="text-sm text-slate-500">Артикул генерируется автоматически</p>
-                        <p class="text-lg font-mono font-semibold text-slate-800 mt-1" id="product-sku-display">-</p>
-                        <input type="hidden" id="product-sku">
-                    </div>
+                    <input type="hidden" id="product-sku">
+                    <input type="hidden" id="product-sku-display">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2">Наименование *</label>
                         <input type="text" id="product-name" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500" placeholder="Напр: Футболка с логотипом">
@@ -901,6 +964,15 @@
     </div>
 
     <script>
+
+        // ==================== MOBILE ====================
+        function toggleMobileSidebar() {
+            const sidebar = document.querySelector('aside');
+            const overlay = document.getElementById('mobile-overlay');
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
+        }
+
         // ==================== AUTH & DATA STORE ====================
         let currentUser = null;
         let selectedOrderItems = [];
@@ -977,7 +1049,8 @@
                 { id: 1, username: 'admin', password: 'admin123', employeeId: null, role: 'admin', status: 'active' },
                 { id: 2, username: 'ivanov', password: 'pass123', employeeId: 1, role: 'employee', status: 'active' },
                 { id: 3, username: 'petrova', password: 'pass123', employeeId: 2, role: 'employee', status: 'active' },
-                { id: 4, username: 'sidorov', password: 'pass123', employeeId: 3, role: 'employee', status: 'active' }
+                { id: 4, username: 'sidorov', password: 'pass123', employeeId: 3, role: 'employee', status: 'active' },
+                { id: 5, username: 'guest', password: '', employeeId: null, role: 'guest', status: 'active' }
             ];
 
             data.orders = [
@@ -1083,6 +1156,12 @@
                 localStorage.removeItem('warehouse_zenit_v1');
                 loadDemoData();
                 renderAll();
+
+            // Close mobile sidebar
+            const sidebar = document.querySelector('aside');
+            const overlay = document.getElementById('mobile-overlay');
+            if (sidebar) sidebar.classList.remove('mobile-open');
+            if (overlay) overlay.classList.remove('active');
                 showNotification('Данные сброшены', 'Восстановлены демонстрационные данные');
             }
         }
@@ -1100,6 +1179,22 @@
             }
 
             currentUser = account;
+            setupUserInterface();
+        }
+
+        function performGuestLogin() {
+            const account = data.accounts.find(a => a.username === 'guest' && a.status === 'active');
+            if (!account) {
+                alert('Гостевой вход временно недоступен');
+                return;
+            }
+            currentUser = account;
+            setupUserInterface();
+            showNotification('Гостевой вход', 'Вы вошли как гость. Доступен просмотр заявок в ожидании и оформление новых заявок.');
+        }
+
+        function setupUserInterface() {
+            const account = currentUser;
             document.getElementById('login-error').classList.add('hidden');
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('app-container').classList.remove('hidden');
@@ -1110,7 +1205,10 @@
                 if (emp) displayName = emp.name;
             }
             document.getElementById('current-user-name').textContent = displayName;
-            document.getElementById('current-user-role').textContent = account.role === 'admin' ? 'Администратор' : 'Сотрудник';
+            let roleText = 'Сотрудник';
+            if (account.role === 'admin') roleText = 'Администратор';
+            if (account.role === 'guest') roleText = 'Гость';
+            document.getElementById('current-user-role').textContent = roleText;
 
             const adminOnly = document.querySelectorAll('.admin-only');
             adminOnly.forEach(el => {
@@ -1120,6 +1218,19 @@
                     el.classList.add('hidden');
                 }
             });
+
+            // Guest-specific restrictions
+            if (account.role === 'guest') {
+                // Hide analysis section from guest
+                document.getElementById('nav-analysis').classList.add('hidden');
+                // Hide employees section
+                document.getElementById('nav-employees').classList.add('hidden');
+                // Hide accounts section
+                document.getElementById('nav-accounts').classList.add('hidden');
+                // Hide export button
+                const exportBtn = document.querySelector('button[onclick="exportToExcel()"]');
+                if (exportBtn) exportBtn.parentElement.classList.add('hidden');
+            }
 
             showSection('dashboard');
             showNotification('Добро пожаловать', `Вы вошли как ${displayName}`);
@@ -1155,6 +1266,12 @@
 
             renderAll();
 
+            // Close mobile sidebar
+            const sidebar = document.querySelector('aside');
+            const overlay = document.getElementById('mobile-overlay');
+            if (sidebar) sidebar.classList.remove('mobile-open');
+            if (overlay) overlay.classList.remove('active');
+
             if (section === 'analysis') {
                 const today = new Date();
                 const monthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
@@ -1173,16 +1290,27 @@
         }
 
         function renderDashboard() {
+            const isGuest = currentUser && currentUser.role === 'guest';
             const completedOrders = data.orders.filter(o => o.status === 'completed');
             const pendingOrders = data.orders.filter(o => o.status === 'pending');
             const lowStockProducts = data.products.filter(p => p.stock <= p.minStock);
 
-            document.getElementById('stat-total-orders').textContent = completedOrders.length;
+            if (isGuest) {
+                document.getElementById('stat-total-orders').textContent = '-';
+                document.getElementById('stat-low-stock').textContent = '-';
+                document.getElementById('stat-total-products').textContent = data.products.length;
+            } else {
+                document.getElementById('stat-total-orders').textContent = completedOrders.length;
+                document.getElementById('stat-low-stock').textContent = lowStockProducts.length;
+                document.getElementById('stat-total-products').textContent = data.products.length;
+            }
             document.getElementById('stat-pending-orders').textContent = pendingOrders.length;
-            document.getElementById('stat-low-stock').textContent = lowStockProducts.length;
-            document.getElementById('stat-total-products').textContent = data.products.length;
 
-            const recentOrders = [...data.orders].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+            let recentOrders = [...data.orders].sort((a, b) => new Date(b.date) - new Date(a.date));
+            if (isGuest) {
+                recentOrders = recentOrders.filter(o => o.status === 'pending');
+            }
+            recentOrders = recentOrders.slice(0, 5);
             const recentTbody = document.getElementById('recent-orders-table');
             recentTbody.innerHTML = recentOrders.map(order => {
                 const emp = data.employees.find(e => e.id === order.employeeId);
@@ -1208,16 +1336,20 @@
             }).join('');
 
             const lowStockTbody = document.getElementById('low-stock-table');
-            lowStockTbody.innerHTML = lowStockProducts.map(product => {
+            if (isGuest) {
+                lowStockTbody.innerHTML = '<tr><td colspan="3" class="px-6 py-8 text-center text-slate-400">Информация о запасах доступна только авторизованным пользователям</td></tr>';
+            } else {
+                lowStockTbody.innerHTML = lowStockProducts.map(product => {
                 const stockClass = product.stock === 0 ? 'stock-low' : (product.stock <= product.minStock / 2 ? 'stock-low' : 'stock-medium');
                 return `
                     <tr class="hover:bg-slate-50 transition-colors">
                         <td class="px-6 py-3 font-medium text-slate-800">${product.name}</td>
-                        <td class="px-6 py-3 text-slate-500 font-mono text-xs">${product.sku}</td>
+                        <td class="px-6 py-3 text-slate-500">${product.category}</td>
                         <td class="px-6 py-3 ${stockClass}">${product.stock} шт.</td>
                     </tr>
                 `;
             }).join('');
+            }
         }
 
         function renderOrders() {
@@ -1226,7 +1358,12 @@
 
             let filtered = data.orders;
 
-            if (currentUser && currentUser.role !== 'admin' && currentUser.employeeId) {
+            // Guest sees only pending orders
+            if (currentUser && currentUser.role === 'guest') {
+                filtered = filtered.filter(o => o.status === 'pending');
+            }
+            // Employee sees only their own orders
+            else if (currentUser && currentUser.role !== 'admin' && currentUser.employeeId) {
                 filtered = filtered.filter(o => o.employeeId === currentUser.employeeId);
             }
 
@@ -1293,6 +1430,9 @@
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 ` : ''}
+                                ${currentUser && currentUser.role === 'guest' ? `
+                                    <span class="text-xs text-slate-400">Просмотр</span>
+                                ` : ''}
                             </div>
                         </td>
                     </tr>
@@ -1327,7 +1467,6 @@
 
                 return `
                     <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="px-6 py-3 font-mono text-xs text-slate-500">${product.sku}</td>
                         <td class="px-6 py-3 font-medium text-slate-800">${product.name}</td>
                         <td class="px-6 py-3 text-slate-600">${product.category}</td>
                         <td class="px-6 py-3 ${stockClass}">${product.stock} шт.</td>
@@ -1356,7 +1495,7 @@
                         </td>
                     </tr>
                 `;
-            }).join('') || '<tr><td colspan="7" class="px-6 py-8 text-center text-slate-400">Товары не найдены</td></tr>';
+            }).join('') || '<tr><td colspan="6" class="px-6 py-8 text-center text-slate-400">Товары не найдены</td></tr>';
         }
 
         function renderEmployees() {
@@ -1426,7 +1565,10 @@
             empSelect.innerHTML = '<option value="">Выберите сотрудника</option>' +
                 data.employees.map(e => `<option value="${e.id}">${e.name} (${e.department})</option>`).join('');
 
-            if (currentUser && currentUser.role !== 'admin' && currentUser.employeeId) {
+            if (currentUser && currentUser.role === 'guest') {
+                // Guest can select any employee
+                empSelect.disabled = false;
+            } else if (currentUser && currentUser.role !== 'admin' && currentUser.employeeId) {
                 empSelect.value = currentUser.employeeId;
                 empSelect.disabled = true;
             } else {
@@ -1571,7 +1713,7 @@
                     <div class="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200 slide-in">
                         <div class="flex-1">
                             <p class="text-sm font-medium text-slate-800">${product.name}</p>
-                            <p class="text-xs text-slate-500">${product.sku} | ${product.category} | Доступно: ${product.stock} шт.</p>
+                            <p class="text-xs text-slate-500">${product.category} | Доступно: ${product.stock} шт.</p>
                         </div>
                         <div class="flex items-center gap-2">
                             <button onclick="updateOrderItemQuantity(${item.productId}, ${item.quantity - 1})" class="w-7 h-7 flex items-center justify-center rounded bg-slate-100 hover:bg-slate-200 text-slate-600">
@@ -1637,6 +1779,12 @@
             closeOrderModal();
             renderAll();
 
+            // Close mobile sidebar
+            const sidebar = document.querySelector('aside');
+            const overlay = document.getElementById('mobile-overlay');
+            if (sidebar) sidebar.classList.remove('mobile-open');
+            if (overlay) overlay.classList.remove('active');
+
             showNotification('Заявка создана', `Заявка ${orderId} успешно создана и ожидает выдачи`);
         }
 
@@ -1660,6 +1808,12 @@
             order.status = 'completed';
             saveData();
             renderAll();
+
+            // Close mobile sidebar
+            const sidebar = document.querySelector('aside');
+            const overlay = document.getElementById('mobile-overlay');
+            if (sidebar) sidebar.classList.remove('mobile-open');
+            if (overlay) overlay.classList.remove('active');
             showNotification('Заявка выдана', `Заявка ${orderId} выполнена. Остатки обновлены.`);
         }
 
@@ -1672,6 +1826,12 @@
             order.status = 'cancelled';
             saveData();
             renderAll();
+
+            // Close mobile sidebar
+            const sidebar = document.querySelector('aside');
+            const overlay = document.getElementById('mobile-overlay');
+            if (sidebar) sidebar.classList.remove('mobile-open');
+            if (overlay) overlay.classList.remove('active');
             showNotification('Заявка отменена', `Заявка ${orderId} отменена`);
         }
 
@@ -1689,6 +1849,12 @@
             data.orders = data.orders.filter(o => o.id !== orderId);
             saveData();
             renderAll();
+
+            // Close mobile sidebar
+            const sidebar = document.querySelector('aside');
+            const overlay = document.getElementById('mobile-overlay');
+            if (sidebar) sidebar.classList.remove('mobile-open');
+            if (overlay) overlay.classList.remove('active');
         }
 
         function showOrderDetails(orderId) {
@@ -1719,7 +1885,7 @@
                             </div>
                             <div>
                                 <p class="font-medium text-slate-800">${product ? product.name : 'Неизвестный товар'}</p>
-                                <p class="text-xs text-slate-500">${product ? product.sku : '-'} | ${product ? product.category : '-'}</p>
+                                <p class="text-xs text-slate-500">${product ? product.category : '-'}</p>
                             </div>
                         </div>
                         <div class="text-right">
@@ -1766,6 +1932,7 @@
             `;
 
             const isAdmin = currentUser && currentUser.role === 'admin';
+            const isGuest = currentUser && currentUser.role === 'guest';
             let actionsHtml = '';
             if (isAdmin && order.status === 'pending') {
                 actionsHtml = `
@@ -1784,6 +1951,9 @@
                     </button>
                 `;
             }
+            if (isGuest) {
+                actionsHtml = '<span class="text-sm text-slate-400">Гость может только просматривать заявки</span>';
+            }
 
             document.getElementById('order-details-actions').innerHTML = actionsHtml || '<span class="text-sm text-slate-400">Нет доступных действий</span>';
             document.getElementById('order-details-modal').classList.remove('hidden');
@@ -1801,7 +1971,7 @@
                 const product = data.products.find(p => p.id === productId);
                 document.getElementById('product-modal-title').textContent = 'Редактировать товар';
                 document.getElementById('product-id').value = product.id;
-                document.getElementById('product-sku-display').textContent = product.sku;
+                document.getElementById('product-sku-display').value = product.sku;
                 document.getElementById('product-sku').value = product.sku;
                 document.getElementById('product-name').value = product.name;
                 document.getElementById('product-category').value = product.category;
@@ -1814,7 +1984,7 @@
                 // Generate preview SKU
                 const defaultCat = 'Сувенирная продукция';
                 const previewSku = generateSKU(defaultCat);
-                document.getElementById('product-sku-display').textContent = previewSku + ' (будет сгенерирован)';
+                document.getElementById('product-sku-display').value = previewSku;
                 document.getElementById('product-sku').value = '';
                 document.getElementById('product-name').value = '';
                 document.getElementById('product-category').value = defaultCat;
@@ -1881,6 +2051,12 @@
                 product.stock = parseInt(newStock);
                 saveData();
                 renderAll();
+
+            // Close mobile sidebar
+            const sidebar = document.querySelector('aside');
+            const overlay = document.getElementById('mobile-overlay');
+            if (sidebar) sidebar.classList.remove('mobile-open');
+            if (overlay) overlay.classList.remove('active');
                 showNotification('Остаток обновлен', `${product.name}: ${product.stock} шт.`);
             }
         }
@@ -2096,7 +2272,6 @@
                 return `
                     <tr class="hover:bg-slate-50 transition-colors">
                         <td class="px-6 py-3 font-medium text-slate-800">${item.name}</td>
-                        <td class="px-6 py-3 font-mono text-xs text-slate-500">${item.sku}</td>
                         <td class="px-6 py-3 text-slate-600">${item.category}</td>
                         <td class="px-6 py-3 text-slate-800 font-medium">${item.quantity} шт.</td>
                         <td class="px-6 py-3 text-slate-600">${item.orders}</td>
@@ -2104,7 +2279,7 @@
                         <td class="px-6 py-3 text-slate-600">${avgPerMonth} шт./мес</td>
                     </tr>
                 `;
-            }).join('') || '<tr><td colspan="7" class="px-6 py-8 text-center text-slate-400">Нет данных за выбранный период</td></tr>';
+            }).join('') || '<tr><td colspan="6" class="px-6 py-8 text-center text-slate-400">Нет данных за выбранный период</td></tr>';
 
             renderCharts(reportData, dateFrom, dateTo);
         }
@@ -2181,14 +2356,14 @@
 
             let csv = 'Анализ уходимости продукции\n';
             csv += `Период: ${dateFrom} - ${dateTo}\n\n`;
-            csv += 'Товар,Артикул,Категория,Выдано (шт.),Кол-во заявок,Остаток,Средний расход/мес\n';
+            csv += 'Товар,Категория,Выдано (шт.),Кол-во заявок,Остаток,Средний расход/мес\n';
 
             const rows = document.querySelectorAll('#analysis-table tr');
             rows.forEach(row => {
                 const cells = row.querySelectorAll('td');
                 if (cells.length >= 7) {
                     const vals = Array.from(cells).map(c => c.textContent.trim().replace(' шт.', '').replace(' шт./мес', ''));
-                    csv += `"${vals[0]}","${vals[1]}","${vals[2]}",${vals[3]},${vals[4]},${vals[5]},${vals[6]}\n`;
+                    csv += `"${vals[0]}","${vals[1]}",${vals[2]},${vals[3]},${vals[4]},${vals[5]}\n`;
                 }
             });
 
@@ -2220,7 +2395,7 @@
 
                 order.items.forEach(item => {
                     const product = data.products.find(p => p.id === item.productId);
-                    csv += `"${order.id}","${order.date}","${emp ? emp.name : ''}","${emp ? emp.department : ''}","${order.basis || ''}","${order.purpose || ''}","${statusText}","${product ? product.name : ''}","${product ? product.sku : ''}","${product ? product.category : ''}",${item.quantity}\n`;
+                    csv += `"${order.id}","${order.date}","${emp ? emp.name : ''}","${emp ? emp.department : ''}","${order.basis || ''}","${order.purpose || ''}","${statusText}","${product ? product.name : ''}","${product ? product.category : ''}",${item.quantity}\n`;
                 });
             });
 
