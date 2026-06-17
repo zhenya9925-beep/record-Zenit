@@ -180,13 +180,14 @@
             border-bottom: none;
         }
     
-        /* MOBILE RESPONSIVE */
+        /* ==================== MOBILE RESPONSIVE ==================== */
         @media (max-width: 1024px) {
             .ml-64 { margin-left: 0 !important; }
             aside {
                 transform: translateX(-100%);
                 transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 box-shadow: none;
+                width: 280px;
             }
             aside.mobile-open {
                 transform: translateX(0);
@@ -198,6 +199,7 @@
                 inset: 0;
                 background: rgba(0,30,80,0.4);
                 backdrop-filter: blur(2px);
+                -webkit-backdrop-filter: blur(2px);
                 z-index: 35;
                 transition: opacity 0.3s;
                 opacity: 0;
@@ -207,20 +209,21 @@
                 opacity: 1;
             }
 
-            /* Make cards stack better */
             .grid-cols-4 { grid-template-columns: repeat(2, 1fr); }
 
-            /* Hide sidebar by default on mobile */
             #app-container aside:not(.mobile-open) {
                 transform: translateX(-100%);
             }
+
+            /* Tables */
+            table { font-size: 0.8rem; }
+            th, td { padding: 8px 12px !important; white-space: nowrap; }
         }
 
         @media (max-width: 640px) {
-            .grid-cols-4 { grid-template-columns: 1fr; }
-            .grid-cols-2 { grid-template-columns: 1fr; }
+            .grid-cols-4, .grid-cols-2, .grid-cols-1 { grid-template-columns: 1fr !important; }
 
-            /* Full screen modals on mobile */
+            /* Modals full screen */
             #order-modal .max-w-4xl,
             #product-modal .max-w-lg,
             #employee-modal .max-w-lg,
@@ -230,20 +233,86 @@
                 max-height: 100vh;
                 border-radius: 0;
                 margin: 0;
+                height: 100vh;
             }
 
-            /* Touch friendly buttons */
-            button, select, input { min-height: 44px; }
+            /* Touch friendly */
+            button, select, input, textarea { 
+                min-height: 44px; 
+                font-size: 16px !important; /* Prevent iOS zoom */
+            }
 
-            /* Better table scrolling */
-            .overflow-x-auto { -webkit-overflow-scrolling: touch; }
+            .overflow-x-auto { 
+                -webkit-overflow-scrolling: touch; 
+                overflow-x: auto;
+            }
 
-            /* Sidebar user block smaller */
+            /* Padding */
+            main .p-8 { padding: 0.75rem !important; }
+            header .px-8 { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+            header .py-4 { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
+
+            /* Header */
+            header h2 { font-size: 1.1rem !important; }
+
+            /* Cards */
+            .card-hover { 
+                padding: 1rem !important; 
+            }
+            .card-hover .text-2xl { font-size: 1.5rem !important; }
+
+            /* Tables - horizontal scroll */
+            .overflow-x-auto table { min-width: 800px; }
+
+            /* Sidebar */
             #current-user-name { font-size: 0.8rem; }
 
-            /* Main content padding on mobile */
-            main .p-8 { padding: 1rem; }
-            header .px-8 { padding-left: 1rem; padding-right: 1rem; }
+            /* Status badges */
+            .status-badge { padding: 2px 8px; font-size: 0.65rem; }
+
+            /* Modal content */
+            .modal-overlay + div > div { 
+                width: 100% !important; 
+                max-width: 100% !important; 
+                border-radius: 0 !important;
+            }
+
+            /* Form inputs in modals */
+            #order-modal input, #order-modal select, #order-modal textarea,
+            #product-modal input, #product-modal select, #product-modal textarea {
+                font-size: 16px !important; /* Prevent zoom on iOS */
+            }
+
+            /* Category groups in order modal */
+            .category-group { padding: 8px; }
+            .category-group-header { font-size: 0.75rem; }
+
+            /* Selected items in order modal */
+            #order-items-container > div { padding: 8px; }
+
+            /* Buttons in header */
+            header button { 
+                padding: 8px 12px !important; 
+                font-size: 0.8rem !important;
+            }
+            header button i { font-size: 0.8rem !important; }
+
+            /* Login screen */
+            #login-screen > div { 
+                margin: 1rem; 
+                padding: 1.5rem !important; 
+            }
+            #login-screen h1 { font-size: 1.5rem !important; }
+
+            /* Analysis charts */
+            .chart-container { height: 250px; }
+
+            /* Notification */
+            .slide-in.max-w-sm { 
+                max-width: calc(100vw - 2rem) !important; 
+                right: 1rem !important; 
+                left: 1rem !important;
+            }
         }
 
         /* Burger menu button */
@@ -260,6 +329,7 @@
             font-size: 1.2rem;
             box-shadow: 0 2px 8px rgba(0,102,204,0.15);
             transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
         }
         .burger-btn:hover {
             background: #0066CC;
@@ -271,6 +341,21 @@
         }
         @media (max-width: 1024px) {
             .burger-btn { display: flex; }
+        }
+
+        /* Safari specific fixes */
+        @supports (-webkit-touch-callout: none) {
+            /* iOS Safari specific */
+            input, select, textarea { 
+                -webkit-appearance: none; 
+                border-radius: 8px;
+            }
+            select {
+                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+                background-repeat: no-repeat;
+                background-position: right 12px center;
+                padding-right: 30px;
+            }
         }
 
     </style>
@@ -382,9 +467,9 @@
                     <i class="fas fa-file-excel w-5 text-green-600"></i>
                     Экспорт в Excel
                 </button>
-                <button onclick="logout()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors">
+                <button onclick="logout()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors guest-logout-btn">
                     <i class="fas fa-sign-out-alt w-5"></i>
-                    Выйти
+                    <span id="logout-text">Выйти</span>
                 </button>
                 <button onclick="resetData()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors admin-only hidden">
                     <i class="fas fa-trash-alt w-5"></i>
@@ -1067,10 +1152,20 @@
 
         // ==================== DEMO DATA ====================
         function loadDemoData() {
-            const saved = localStorage.getItem('warehouse_zenit_v1');
+            let saved = null;
+            try {
+                saved = localStorage.getItem('warehouse_zenit_v1');
+            } catch (e) {
+                console.warn('localStorage not available (private mode?):', e);
+            }
+
             if (saved) {
-                data = JSON.parse(saved);
-                return;
+                try {
+                    data = JSON.parse(saved);
+                    return;
+                } catch (e) {
+                    console.warn('Failed to parse saved data:', e);
+                }
             }
 
             data.products = [
@@ -1203,7 +1298,11 @@
         }
 
         function saveData() {
-            localStorage.setItem('warehouse_zenit_v1', JSON.stringify(data));
+            try {
+                localStorage.setItem('warehouse_zenit_v1', JSON.stringify(data));
+            } catch (e) {
+                console.warn('Cannot save to localStorage:', e);
+            }
         }
 
         function resetData() {
@@ -1228,30 +1327,73 @@
             const username = document.getElementById('login-username').value.trim();
             const password = document.getElementById('login-password').value;
 
-            const account = data.accounts.find(a => a.username === username && a.password === password && a.status === 'active');
+            console.log('Login attempt:', username);
+
+            // Safari-safe account search
+            let account = null;
+            for (let i = 0; i < data.accounts.length; i++) {
+                const a = data.accounts[i];
+                if (a.username === username && a.password === password && a.status === 'active') {
+                    account = a;
+                    break;
+                }
+            }
 
             if (!account) {
+                console.log('Account not found');
                 document.getElementById('login-error').classList.remove('hidden');
                 return;
             }
 
+            console.log('Account found:', account.username);
             currentUser = account;
             setupUserInterface();
         }
 
         function performGuestLogin() {
-            // Ensure data is loaded
-            if (!data.accounts || data.accounts.length === 0) {
-                loadDemoData();
+            console.log('Guest login attempt...');
+
+            // Ensure data is loaded - try multiple times for Safari
+            let attempts = 0;
+            const maxAttempts = 3;
+
+            function tryLogin() {
+                attempts++;
+                console.log('Login attempt', attempts, 'accounts:', data.accounts ? data.accounts.length : 0);
+
+                if (!data.accounts || data.accounts.length === 0) {
+                    console.log('Data not loaded, loading demo data...');
+                    loadDemoData();
+                }
+
+                // Find guest account - Safari-safe comparison
+                let account = null;
+                for (let i = 0; i < data.accounts.length; i++) {
+                    if (data.accounts[i].username === 'guest' && data.accounts[i].status === 'active') {
+                        account = data.accounts[i];
+                        break;
+                    }
+                }
+
+                if (!account && attempts < maxAttempts) {
+                    console.log('Account not found, retrying...');
+                    setTimeout(tryLogin, 100);
+                    return;
+                }
+
+                if (!account) {
+                    console.error('Guest account not found after', maxAttempts, 'attempts');
+                    alert('Гостевой вход временно недоступен. Пожалуйста, обновите страницу.');
+                    return;
+                }
+
+                console.log('Guest account found:', account.username);
+                currentUser = account;
+                setupUserInterface();
+                showNotification('Гостевой вход', 'Вы вошли как гость. Доступен просмотр заявок в ожидании и оформление новых заявок.');
             }
-            const account = data.accounts.find(a => a.username === 'guest' && a.status === 'active');
-            if (!account) {
-                alert('Гостевой вход временно недоступен. Данные не загружены.');
-                return;
-            }
-            currentUser = account;
-            setupUserInterface();
-            showNotification('Гостевой вход', 'Вы вошли как гость. Доступен просмотр заявок в ожидании и оформление новых заявок.');
+
+            tryLogin();
         }
 
         function setupUserInterface() {
@@ -1291,8 +1433,12 @@
                 document.getElementById('nav-accounts').classList.add('hidden');
                 // Hide products section
                 document.getElementById('nav-products').classList.add('hidden');
-                // Hide user info block
-                document.querySelectorAll('.guest-hide-block').forEach(el => el.classList.add('hidden'));
+                // Hide user info block completely
+                const userBlocks = document.querySelectorAll('.guest-hide-block');
+                userBlocks.forEach(el => {
+                    el.style.display = 'none';
+                    el.classList.add('hidden');
+                });
                 // Hide export button
                 const exportBtn = document.querySelector('button[onclick="exportToExcel()"]');
                 if (exportBtn) exportBtn.parentElement.classList.add('hidden');
