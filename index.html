@@ -182,14 +182,38 @@
     
         /* MOBILE RESPONSIVE */
         @media (max-width: 1024px) {
-            .ml-64 { margin-left: 0; }
-            aside { transform: translateX(-100%); transition: transform 0.3s ease; }
-            aside.mobile-open { transform: translateX(0); }
-            .mobile-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 35; }
-            .mobile-overlay.active { display: block; }
+            .ml-64 { margin-left: 0 !important; }
+            aside {
+                transform: translateX(-100%);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: none;
+            }
+            aside.mobile-open {
+                transform: translateX(0);
+                box-shadow: 4px 0 24px rgba(0,0,0,0.15);
+            }
+            .mobile-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0,30,80,0.4);
+                backdrop-filter: blur(2px);
+                z-index: 35;
+                transition: opacity 0.3s;
+                opacity: 0;
+            }
+            .mobile-overlay.active {
+                display: block;
+                opacity: 1;
+            }
 
             /* Make cards stack better */
             .grid-cols-4 { grid-template-columns: repeat(2, 1fr); }
+
+            /* Hide sidebar by default on mobile */
+            #app-container aside:not(.mobile-open) {
+                transform: translateX(-100%);
+            }
         }
 
         @media (max-width: 640px) {
@@ -216,20 +240,34 @@
 
             /* Sidebar user block smaller */
             #current-user-name { font-size: 0.8rem; }
+
+            /* Main content padding on mobile */
+            main .p-8 { padding: 1rem; }
+            header .px-8 { padding-left: 1rem; padding-right: 1rem; }
         }
 
         /* Burger menu button */
         .burger-btn {
             display: none;
-            width: 40px;
-            height: 40px;
+            width: 44px;
+            height: 44px;
             align-items: center;
             justify-content: center;
-            border-radius: 8px;
+            border-radius: 10px;
             background: white;
-            border: 1px solid #e2e8f0;
+            border: 2px solid #0066CC;
             color: #0066CC;
             font-size: 1.2rem;
+            box-shadow: 0 2px 8px rgba(0,102,204,0.15);
+            transition: all 0.2s;
+        }
+        .burger-btn:hover {
+            background: #0066CC;
+            color: white;
+            transform: scale(1.05);
+        }
+        .burger-btn:active {
+            transform: scale(0.95);
         }
         @media (max-width: 1024px) {
             .burger-btn { display: flex; }
@@ -304,7 +342,7 @@
                 </div>
             </div>
 
-            <div class="px-4 py-2">
+            <div class="px-4 py-2 guest-hide-block">
                 <div class="rounded-lg p-3" style="background: linear-gradient(135deg, #f0f7ff 0%, #e6f0ff 100%);">
                     <p class="text-xs text-slate-500">Вы вошли как</p>
                     <p class="text-sm font-semibold text-slate-800" id="current-user-name">-</p>
@@ -354,7 +392,7 @@
                 </button>
             </div>
         </aside>
-    <div id="mobile-overlay" class="mobile-overlay" onclick="toggleMobileSidebar()"></div>
+    <div id="mobile-overlay" class="mobile-overlay" onclick="closeMobileSidebar()"></div>
 
         <!-- Main Content -->
         <main class="ml-64 min-h-screen">
@@ -362,7 +400,7 @@
             <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
                 <div class="flex items-center justify-between px-8 py-4">
                     <div class="flex items-center gap-4">
-                        <button onclick="toggleMobileSidebar()" class="burger-btn mr-3 lg:hidden">
+                        <button onclick="toggleMobileSidebar()" class="burger-btn mr-3" id="burger-menu-btn">
                         <i class="fas fa-bars"></i>
                     </button>
                     <h2 id="page-title" class="text-xl font-bold text-slate-800">Дашборд</h2>
@@ -969,8 +1007,25 @@
         function toggleMobileSidebar() {
             const sidebar = document.querySelector('aside');
             const overlay = document.getElementById('mobile-overlay');
-            sidebar.classList.toggle('mobile-open');
-            overlay.classList.toggle('active');
+            const isOpen = sidebar.classList.contains('mobile-open');
+
+            if (isOpen) {
+                sidebar.classList.remove('mobile-open');
+                overlay.classList.remove('active');
+                document.body.style.overflow = '';
+            } else {
+                sidebar.classList.add('mobile-open');
+                overlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeMobileSidebar() {
+            const sidebar = document.querySelector('aside');
+            const overlay = document.getElementById('mobile-overlay');
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
         }
 
         // ==================== AUTH & DATA STORE ====================
@@ -1158,16 +1213,18 @@
                 renderAll();
 
             // Close mobile sidebar
-            const sidebar = document.querySelector('aside');
-            const overlay = document.getElementById('mobile-overlay');
-            if (sidebar) sidebar.classList.remove('mobile-open');
-            if (overlay) overlay.classList.remove('active');
+            closeMobileSidebar();
                 showNotification('Данные сброшены', 'Восстановлены демонстрационные данные');
             }
         }
 
         // ==================== AUTH ====================
         function performLogin() {
+            // Ensure data is loaded
+            if (!data.accounts || data.accounts.length === 0) {
+                loadDemoData();
+            }
+
             const username = document.getElementById('login-username').value.trim();
             const password = document.getElementById('login-password').value;
 
@@ -1183,9 +1240,13 @@
         }
 
         function performGuestLogin() {
+            // Ensure data is loaded
+            if (!data.accounts || data.accounts.length === 0) {
+                loadDemoData();
+            }
             const account = data.accounts.find(a => a.username === 'guest' && a.status === 'active');
             if (!account) {
-                alert('Гостевой вход временно недоступен');
+                alert('Гостевой вход временно недоступен. Данные не загружены.');
                 return;
             }
             currentUser = account;
@@ -1195,6 +1256,7 @@
 
         function setupUserInterface() {
             const account = currentUser;
+            console.log('Setting up UI for user:', account.username, 'role:', account.role);
             document.getElementById('login-error').classList.add('hidden');
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('app-container').classList.remove('hidden');
@@ -1227,6 +1289,10 @@
                 document.getElementById('nav-employees').classList.add('hidden');
                 // Hide accounts section
                 document.getElementById('nav-accounts').classList.add('hidden');
+                // Hide products section
+                document.getElementById('nav-products').classList.add('hidden');
+                // Hide user info block
+                document.querySelectorAll('.guest-hide-block').forEach(el => el.classList.add('hidden'));
                 // Hide export button
                 const exportBtn = document.querySelector('button[onclick="exportToExcel()"]');
                 if (exportBtn) exportBtn.parentElement.classList.add('hidden');
@@ -1267,10 +1333,7 @@
             renderAll();
 
             // Close mobile sidebar
-            const sidebar = document.querySelector('aside');
-            const overlay = document.getElementById('mobile-overlay');
-            if (sidebar) sidebar.classList.remove('mobile-open');
-            if (overlay) overlay.classList.remove('active');
+            closeMobileSidebar();
 
             if (section === 'analysis') {
                 const today = new Date();
@@ -1552,6 +1615,40 @@
             }).join('') || '<tr><td colspan="6" class="px-6 py-8 text-center text-slate-400">Учетные записи не найдены</td></tr>';
         }
 
+
+        // Swipe gesture for mobile sidebar
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', function(e) {
+            touchStartX = e.changedTouches[0].screenX;
+        }, false);
+
+        document.addEventListener('touchend', function(e) {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        }, false);
+
+        function handleSwipe() {
+            const sidebar = document.querySelector('aside');
+            const isMobile = window.innerWidth <= 1024;
+            if (!isMobile) return;
+
+            const swipeThreshold = 80;
+            const diff = touchEndX - touchStartX;
+
+            // Swipe right from left edge opens sidebar
+            if (diff > swipeThreshold && touchStartX < 50) {
+                sidebar.classList.add('mobile-open');
+                document.getElementById('mobile-overlay').classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+            // Swipe left closes sidebar
+            else if (diff < -swipeThreshold && sidebar.classList.contains('mobile-open')) {
+                closeMobileSidebar();
+            }
+        }
+
         // ==================== ORDER MANAGEMENT ====================
         function openNewOrderModal() {
             document.getElementById('order-modal').classList.remove('hidden');
@@ -1780,10 +1877,7 @@
             renderAll();
 
             // Close mobile sidebar
-            const sidebar = document.querySelector('aside');
-            const overlay = document.getElementById('mobile-overlay');
-            if (sidebar) sidebar.classList.remove('mobile-open');
-            if (overlay) overlay.classList.remove('active');
+            closeMobileSidebar();
 
             showNotification('Заявка создана', `Заявка ${orderId} успешно создана и ожидает выдачи`);
         }
@@ -1810,10 +1904,7 @@
             renderAll();
 
             // Close mobile sidebar
-            const sidebar = document.querySelector('aside');
-            const overlay = document.getElementById('mobile-overlay');
-            if (sidebar) sidebar.classList.remove('mobile-open');
-            if (overlay) overlay.classList.remove('active');
+            closeMobileSidebar();
             showNotification('Заявка выдана', `Заявка ${orderId} выполнена. Остатки обновлены.`);
         }
 
@@ -1828,10 +1919,7 @@
             renderAll();
 
             // Close mobile sidebar
-            const sidebar = document.querySelector('aside');
-            const overlay = document.getElementById('mobile-overlay');
-            if (sidebar) sidebar.classList.remove('mobile-open');
-            if (overlay) overlay.classList.remove('active');
+            closeMobileSidebar();
             showNotification('Заявка отменена', `Заявка ${orderId} отменена`);
         }
 
@@ -1851,10 +1939,7 @@
             renderAll();
 
             // Close mobile sidebar
-            const sidebar = document.querySelector('aside');
-            const overlay = document.getElementById('mobile-overlay');
-            if (sidebar) sidebar.classList.remove('mobile-open');
-            if (overlay) overlay.classList.remove('active');
+            closeMobileSidebar();
         }
 
         function showOrderDetails(orderId) {
@@ -2053,10 +2138,7 @@
                 renderAll();
 
             // Close mobile sidebar
-            const sidebar = document.querySelector('aside');
-            const overlay = document.getElementById('mobile-overlay');
-            if (sidebar) sidebar.classList.remove('mobile-open');
-            if (overlay) overlay.classList.remove('active');
+            closeMobileSidebar();
                 showNotification('Остаток обновлен', `${product.name}: ${product.stock} шт.`);
             }
         }
