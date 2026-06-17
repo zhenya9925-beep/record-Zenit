@@ -1,0 +1,2276 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система учета складской продукции — ВК Зенит</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        zenit: {
+                            50: '#e6f0ff',
+                            100: '#cce0ff',
+                            200: '#99c2ff',
+                            300: '#66a3ff',
+                            400: '#3385ff',
+                            500: '#0066CC',
+                            600: '#0052a3',
+                            700: '#003d7a',
+                            800: '#002952',
+                            900: '#001429',
+                        },
+                        cyan: {
+                            400: '#33C7F7',
+                            500: '#00AEEF',
+                            600: '#008bbd',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f0f4f8; }
+        .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        .sidebar-item { transition: all 0.2s; border-radius: 10px; margin: 2px 8px; }
+        .sidebar-item:hover { background: rgba(0, 102, 204, 0.08); color: #0066CC; }
+        .sidebar-item.active { background: linear-gradient(135deg, #0066CC 0%, #00AEEF 100%); color: white; box-shadow: 0 4px 12px rgba(0,102,204,0.3); }
+        .card-hover { transition: transform 0.2s, box-shadow 0.2s; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 12px 40px -8px rgba(0,102,204,0.15); }
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .slide-in { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f0f4f8; }
+        ::-webkit-scrollbar-thumb { background: #0066CC; border-radius: 3px; opacity: 0.3; }
+        ::-webkit-scrollbar-thumb:hover { background: #0052a3; }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .status-completed { background: #dcfce7; color: #166534; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-cancelled { background: #fee2e2; color: #991b1b; }
+
+        .stock-low { color: #dc2626; font-weight: 700; }
+        .stock-medium { color: #d97706; font-weight: 600; }
+        .stock-ok { color: #16a34a; font-weight: 600; }
+
+        .modal-overlay {
+            background: rgba(0, 30, 80, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        .login-bg {
+            background: linear-gradient(135deg, #003d7a 0%, #0066CC 40%, #00AEEF 100%);
+        }
+
+        .zenit-gradient {
+            background: linear-gradient(135deg, #0066CC 0%, #00AEEF 100%);
+        }
+
+        .zenit-gradient-text {
+            background: linear-gradient(135deg, #0066CC 0%, #00AEEF 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .btn-zenit {
+            background: linear-gradient(135deg, #0066CC 0%, #0088ee 100%);
+            transition: all 0.2s;
+        }
+        .btn-zenit:hover {
+            background: linear-gradient(135deg, #0052a3 0%, #0066CC 100%);
+            transform: scale(1.02);
+            box-shadow: 0 8px 24px rgba(0,102,204,0.35);
+        }
+
+        .btn-zenit-secondary {
+            background: white;
+            border: 2px solid #0066CC;
+            color: #0066CC;
+            transition: all 0.2s;
+        }
+        .btn-zenit-secondary:hover {
+            background: #0066CC;
+            color: white;
+        }
+
+        .zenit-border {
+            border-color: #0066CC;
+        }
+
+        .zenit-ring:focus {
+            outline: none;
+            ring: 2px;
+            ring-color: #0066CC;
+        }
+
+        /* Order item grouped by category */
+        .category-group {
+            border-left: 3px solid #0066CC;
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+        .category-group-header {
+            font-weight: 600;
+            color: #0066CC;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .product-search-box {
+            position: relative;
+        }
+        .product-search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+        }
+        .product-search-results.active {
+            display: block;
+        }
+        .product-search-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+            transition: background 0.15s;
+        }
+        .product-search-item:hover {
+            background: #f0f7ff;
+        }
+        .product-search-item:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen" class="fixed inset-0 z-50 login-bg flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 m-4">
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 rounded-full flex items-center justify-center text-white shadow-lg mx-auto mb-4" style="background: linear-gradient(135deg, #0066CC 0%, #00AEEF 100%);">
+                    <i class="fas fa-volleyball-ball text-3xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-800">ВК Зенит</h1>
+                <p class="text-sm text-slate-500 mt-1">Система учета складской продукции</p>
+            </div>
+
+            <div id="login-form">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Логин</label>
+                    <div class="relative">
+                        <i class="fas fa-user absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="login-username" class="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500" placeholder="Введите логин">
+                    </div>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Пароль</label>
+                    <div class="relative">
+                        <i class="fas fa-lock absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="password" id="login-password" class="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500" placeholder="Введите пароль">
+                    </div>
+                </div>
+                <button onclick="performLogin()" class="w-full btn-zenit text-white py-3 rounded-lg font-medium shadow-lg">
+                    Войти
+                </button>
+                <p id="login-error" class="text-red-500 text-sm text-center mt-3 hidden">Неверный логин или пароль</p>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-slate-100 text-center">
+                <p class="text-xs text-slate-400">Демо-данные:</p>
+                <p class="text-xs text-slate-500 mt-1">Админ: <span class="font-mono">admin / admin123</span></p>
+                <p class="text-xs text-slate-500">Сотрудник: <span class="font-mono">ivanov / pass123</span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="app-container" class="hidden">
+        <!-- Sidebar -->
+        <aside class="fixed left-0 top-0 h-full w-64 bg-white border-r border-slate-200 z-40 flex flex-col">
+            <div class="p-5 border-b border-slate-100">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg" style="background: linear-gradient(135deg, #0066CC 0%, #00AEEF 100%);">
+                        <i class="fas fa-volleyball-ball text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg leading-tight">ВК Зенит</h1>
+                        <p class="text-xs text-slate-500">Склад</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-4 py-2">
+                <div class="rounded-lg p-3" style="background: linear-gradient(135deg, #f0f7ff 0%, #e6f0ff 100%);">
+                    <p class="text-xs text-slate-500">Вы вошли как</p>
+                    <p class="text-sm font-semibold text-slate-800" id="current-user-name">-</p>
+                    <span class="inline-block mt-1 text-xs px-2 py-0.5 rounded-full font-medium" id="current-user-role" style="background: #0066CC; color: white;">-</span>
+                </div>
+            </div>
+
+            <nav class="flex-1 p-3 space-y-1">
+                <button onclick="showSection('dashboard')" id="nav-dashboard" class="sidebar-item active w-full flex items-center gap-3 px-4 py-3 text-sm font-medium">
+                    <i class="fas fa-chart-pie w-5"></i>
+                    Дашборд
+                </button>
+                <button onclick="showSection('orders')" id="nav-orders" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600">
+                    <i class="fas fa-clipboard-list w-5"></i>
+                    Заявки
+                </button>
+                <button onclick="showSection('products')" id="nav-products" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600">
+                    <i class="fas fa-box w-5"></i>
+                    Номенклатура
+                </button>
+                <button onclick="showSection('analysis')" id="nav-analysis" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600">
+                    <i class="fas fa-chart-line w-5"></i>
+                    Анализ уходимости
+                </button>
+                <button onclick="showSection('employees')" id="nav-employees" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 admin-only hidden">
+                    <i class="fas fa-users w-5"></i>
+                    Сотрудники
+                </button>
+                <button onclick="showSection('accounts')" id="nav-accounts" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 admin-only hidden">
+                    <i class="fas fa-user-shield w-5"></i>
+                    Учетные записи
+                </button>
+            </nav>
+
+            <div class="p-4 border-t border-slate-100 space-y-1">
+                <button onclick="exportToExcel()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+                    <i class="fas fa-file-excel w-5 text-green-600"></i>
+                    Экспорт в Excel
+                </button>
+                <button onclick="logout()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors">
+                    <i class="fas fa-sign-out-alt w-5"></i>
+                    Выйти
+                </button>
+                <button onclick="resetData()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors admin-only hidden">
+                    <i class="fas fa-trash-alt w-5"></i>
+                    Сбросить данные
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="ml-64 min-h-screen">
+            <!-- Header -->
+            <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+                <div class="flex items-center justify-between px-8 py-4">
+                    <div class="flex items-center gap-4">
+                        <h2 id="page-title" class="text-xl font-bold text-slate-800">Дашборд</h2>
+                        <span id="current-date" class="text-sm text-slate-500"></span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="openNewOrderModal()" class="btn-zenit text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 shadow-lg">
+                            <i class="fas fa-plus"></i>
+                            Новая заявка
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="p-8">
+                <!-- Dashboard Section -->
+                <div id="section-dashboard" class="fade-in">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="bg-white rounded-xl p-6 shadow-sm border border-slate-200 card-hover">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 rounded-lg flex items-center justify-center text-white" style="background: linear-gradient(135deg, #0066CC 0%, #00AEEF 100%);">
+                                    <i class="fas fa-shopping-bag text-xl"></i>
+                                </div>
+                                <span class="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded">Всего</span>
+                            </div>
+                            <p class="text-2xl font-bold text-slate-800" id="stat-total-orders">0</p>
+                            <p class="text-sm text-slate-500 mt-1">Заявок выдано</p>
+                        </div>
+
+                        <div class="bg-white rounded-xl p-6 shadow-sm border border-slate-200 card-hover">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 rounded-lg flex items-center justify-center text-white" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">
+                                    <i class="fas fa-clock text-xl"></i>
+                                </div>
+                                <span class="text-xs font-medium text-amber-700 bg-amber-100 px-2 py-1 rounded">В ожидании</span>
+                            </div>
+                            <p class="text-2xl font-bold text-slate-800" id="stat-pending-orders">0</p>
+                            <p class="text-sm text-slate-500 mt-1">На рассмотрении</p>
+                        </div>
+
+                        <div class="bg-white rounded-xl p-6 shadow-sm border border-slate-200 card-hover">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 rounded-lg flex items-center justify-center text-white" style="background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);">
+                                    <i class="fas fa-exclamation-triangle text-xl"></i>
+                                </div>
+                                <span class="text-xs font-medium text-red-700 bg-red-100 px-2 py-1 rounded">Критично</span>
+                            </div>
+                            <p class="text-2xl font-bold text-slate-800" id="stat-low-stock">0</p>
+                            <p class="text-sm text-slate-500 mt-1">Товаров заканчивается</p>
+                        </div>
+
+                        <div class="bg-white rounded-xl p-6 shadow-sm border border-slate-200 card-hover">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 rounded-lg flex items-center justify-center text-white" style="background: linear-gradient(135deg, #10b981 0%, #34d399 100%);">
+                                    <i class="fas fa-boxes text-xl"></i>
+                                </div>
+                                <span class="text-xs font-medium text-emerald-700 bg-emerald-100 px-2 py-1 rounded">Активно</span>
+                            </div>
+                            <p class="text-2xl font-bold text-slate-800" id="stat-total-products">0</p>
+                            <p class="text-sm text-slate-500 mt-1">Видов продукции</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                                <h3 class="font-semibold text-slate-800">Последние заявки</h3>
+                                <button onclick="showSection('orders')" class="text-sm font-medium hover:underline" style="color: #0066CC;">Все заявки →</button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-slate-50 text-slate-600">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left font-medium">№</th>
+                                            <th class="px-6 py-3 text-left font-medium">Сотрудник</th>
+                                            <th class="px-6 py-3 text-left font-medium">Дата</th>
+                                            <th class="px-6 py-3 text-left font-medium">Статус</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="recent-orders-table" class="divide-y divide-slate-100">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                                <h3 class="font-semibold text-slate-800">Критические остатки</h3>
+                                <button onclick="showSection('products')" class="text-sm font-medium hover:underline" style="color: #0066CC;">Вся номенклатура →</button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-slate-50 text-slate-600">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left font-medium">Товар</th>
+                                            <th class="px-6 py-3 text-left font-medium">Артикул</th>
+                                            <th class="px-6 py-3 text-left font-medium">Остаток</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="low-stock-table" class="divide-y divide-slate-100">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Orders Section -->
+                <div id="section-orders" class="hidden fade-in">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <div class="relative">
+                                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                    <input type="text" id="order-search" oninput="filterOrders()" placeholder="Поиск по заявкам..." 
+                                        class="pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-zenit-500 focus:border-transparent w-64">
+                                </div>
+                                <select id="order-status-filter" onchange="filterOrders()" class="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-zenit-500">
+                                    <option value="">Все статусы</option>
+                                    <option value="completed">Выдано</option>
+                                    <option value="pending">В ожидании</option>
+                                    <option value="cancelled">Отменено</option>
+                                </select>
+                            </div>
+                            <div class="text-sm text-slate-500">
+                                Всего: <span id="orders-count" class="font-semibold text-slate-800">0</span>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead class="bg-slate-50 text-slate-600">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left font-medium">№ заявки</th>
+                                        <th class="px-6 py-3 text-left font-medium">Дата</th>
+                                        <th class="px-6 py-3 text-left font-medium">Сотрудник</th>
+                                        <th class="px-6 py-3 text-left font-medium">Отдел</th>
+                                        <th class="px-6 py-3 text-left font-medium">Основание</th>
+                                        <th class="px-6 py-3 text-left font-medium">Цели</th>
+                                        <th class="px-6 py-3 text-left font-medium">Позиции</th>
+                                        <th class="px-6 py-3 text-left font-medium">Кол-во</th>
+                                        <th class="px-6 py-3 text-left font-medium">Статус</th>
+                                        <th class="px-6 py-3 text-left font-medium">Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="orders-table" class="divide-y divide-slate-100">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Products Section -->
+                <div id="section-products" class="hidden fade-in">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <div class="relative">
+                                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                    <input type="text" id="product-search" oninput="filterProducts()" placeholder="Поиск по товарам..." 
+                                        class="pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-zenit-500 focus:border-transparent w-64">
+                                </div>
+                                <select id="product-category-filter" onchange="filterProducts()" class="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-zenit-500">
+                                    <option value="">Все категории</option>
+                                    <option value="Сувенирная продукция">Сувенирная продукция</option>
+                                    <option value="Экипировка">Экипировка</option>
+                                    <option value="Мат. ценности для матчей">Мат. ценности для матчей</option>
+                                    <option value="Административная продукция">Административная продукция</option>
+                                </select>
+                            </div>
+                            <button onclick="openProductModal()" class="btn-zenit text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all admin-only hidden">
+                                <i class="fas fa-plus"></i>
+                                Добавить товар
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead class="bg-slate-50 text-slate-600">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left font-medium">Артикул</th>
+                                        <th class="px-6 py-3 text-left font-medium">Наименование</th>
+                                        <th class="px-6 py-3 text-left font-medium">Категория</th>
+                                        <th class="px-6 py-3 text-left font-medium">Остаток</th>
+                                        <th class="px-6 py-3 text-left font-medium">Мин. запас</th>
+                                        <th class="px-6 py-3 text-left font-medium">Статус</th>
+                                        <th class="px-6 py-3 text-left font-medium">Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="products-table" class="divide-y divide-slate-100">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analysis Section -->
+                <div id="section-analysis" class="hidden fade-in">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                        <h3 class="font-semibold text-slate-800 mb-4">Анализ уходимости продукции</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Дата начала</label>
+                                <input type="date" id="analysis-date-from" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Дата окончания</label>
+                                <input type="date" id="analysis-date-to" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Категория</label>
+                                <select id="analysis-category" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500">
+                                    <option value="">Все категории</option>
+                                    <option value="Сувенирная продукция">Сувенирная продукция</option>
+                                    <option value="Экипировка">Экипировка</option>
+                                    <option value="Мат. ценности для матчей">Мат. ценности для матчей</option>
+                                    <option value="Административная продукция">Административная продукция</option>
+                                </select>
+                            </div>
+                            <div class="flex items-end">
+                                <button onclick="generateAnalysis()" class="w-full btn-zenit text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg transition-all hover:scale-105">
+                                    <i class="fas fa-chart-bar mr-2"></i>Сформировать отчет
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="analysis-results" class="hidden">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                                <h4 class="font-semibold text-slate-800 mb-4">Расход по категориям</h4>
+                                <div class="chart-container">
+                                    <canvas id="category-chart"></canvas>
+                                </div>
+                            </div>
+                            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                                <h4 class="font-semibold text-slate-800 mb-4">Топ-10 уходимых товаров</h4>
+                                <div class="chart-container">
+                                    <canvas id="top-products-chart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                                <h4 class="font-semibold text-slate-800">Детальный отчет по расходу</h4>
+                                <button onclick="exportAnalysisToExcel()" class="text-sm text-green-600 hover:text-green-700 font-medium flex items-center gap-1">
+                                    <i class="fas fa-file-excel"></i> Экспорт
+                                </button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-slate-50 text-slate-600">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left font-medium">Товар</th>
+                                            <th class="px-6 py-3 text-left font-medium">Артикул</th>
+                                            <th class="px-6 py-3 text-left font-medium">Категория</th>
+                                            <th class="px-6 py-3 text-left font-medium">Выдано (шт.)</th>
+                                            <th class="px-6 py-3 text-left font-medium">Кол-во заявок</th>
+                                            <th class="px-6 py-3 text-left font-medium">Остаток</th>
+                                            <th class="px-6 py-3 text-left font-medium">Средний расход/мес</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="analysis-table" class="divide-y divide-slate-100">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Employees Section -->
+                <div id="section-employees" class="hidden fade-in">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                            <h3 class="font-semibold text-slate-800">Сотрудники</h3>
+                            <button onclick="openEmployeeModal()" class="btn-zenit text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all hover:scale-105">
+                                <i class="fas fa-plus"></i>
+                                Добавить
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead class="bg-slate-50 text-slate-600">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left font-medium">ФИО</th>
+                                        <th class="px-6 py-3 text-left font-medium">Отдел</th>
+                                        <th class="px-6 py-3 text-left font-medium">Должность</th>
+                                        <th class="px-6 py-3 text-left font-medium">Заявок</th>
+                                        <th class="px-6 py-3 text-left font-medium">Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="employees-table" class="divide-y divide-slate-100">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Accounts Section -->
+                <div id="section-accounts" class="hidden fade-in">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                            <div>
+                                <h3 class="font-semibold text-slate-800">Учетные записи</h3>
+                                <p class="text-sm text-slate-500 mt-1">Управление доступом сотрудников к системе</p>
+                            </div>
+                            <button onclick="openAccountModal()" class="btn-zenit text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all hover:scale-105">
+                                <i class="fas fa-plus"></i>
+                                Новая учетная запись
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead class="bg-slate-50 text-slate-600">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left font-medium">Логин</th>
+                                        <th class="px-6 py-3 text-left font-medium">Сотрудник</th>
+                                        <th class="px-6 py-3 text-left font-medium">Отдел</th>
+                                        <th class="px-6 py-3 text-left font-medium">Роль</th>
+                                        <th class="px-6 py-3 text-left font-medium">Статус</th>
+                                        <th class="px-6 py-3 text-left font-medium">Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="accounts-table" class="divide-y divide-slate-100">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- New Order Modal -->
+    <div id="order-modal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-overlay absolute inset-0" onclick="closeOrderModal()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden pointer-events-auto flex flex-col">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between" style="background: linear-gradient(135deg, #f0f7ff 0%, #e6f0ff 100%);">
+                    <h3 class="font-bold text-lg text-slate-800">Новая заявка на выдачу</h3>
+                    <button onclick="closeOrderModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-200 transition-colors">
+                        <i class="fas fa-times text-slate-500"></i>
+                    </button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Сотрудник *</label>
+                            <select id="order-employee" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500">
+                                <option value="">Выберите сотрудника</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Дата выдачи *</label>
+                            <input type="date" id="order-date" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Основание выдачи *</label>
+                            <input type="text" id="order-basis" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500" placeholder="Напр: Приказ №15 от 01.01.2024">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Цели выдачи *</label>
+                            <input type="text" id="order-purpose" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500" placeholder="Опишите цели выдачи...">
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Дополнительное описание целей</label>
+                        <textarea id="order-purpose-desc" rows="2" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500" placeholder="Подробное описание целей выдачи..."></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <label class="block text-sm font-medium text-slate-700">Позиции заявки</label>
+                        </div>
+
+                        <!-- Search and Add Product -->
+                        <div class="bg-slate-50 rounded-lg p-4 mb-4 border border-slate-200">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="relative flex-1">
+                                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                    <input type="text" id="order-product-search" oninput="searchOrderProducts(this.value)" 
+                                        class="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-zenit-500" 
+                                        placeholder="Поиск товара по названию...">
+                                    <div id="order-product-search-results" class="product-search-results"></div>
+                                </div>
+                                <select id="order-product-category-filter" onchange="filterOrderProductsByCategory()" 
+                                    class="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-zenit-500 w-48">
+                                    <option value="">Все категории</option>
+                                    <option value="Сувенирная продукция">Сувенирная продукция</option>
+                                    <option value="Экипировка">Экипировка</option>
+                                    <option value="Мат. ценности для матчей">Мат. ценности для матчей</option>
+                                    <option value="Административная продукция">Административная продукция</option>
+                                </select>
+                            </div>
+
+                            <!-- Grouped Product List -->
+                            <div id="order-product-list" class="max-h-48 overflow-y-auto space-y-2">
+                                <!-- Products grouped by category will be rendered here -->
+                            </div>
+                        </div>
+
+                        <!-- Selected Items -->
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-sm font-medium text-slate-700">Выбранные позиции</label>
+                            <span class="text-xs text-slate-500" id="selected-items-count">0 позиций</span>
+                        </div>
+                        <div id="order-items-container" class="space-y-2">
+                            <p class="text-sm text-slate-400 text-center py-4">Выберите товары из списка выше</p>
+                        </div>
+                    </div>
+
+                    <div class="rounded-lg p-4 mt-4" style="background: linear-gradient(135deg, #f0f7ff 0%, #e6f0ff 100%);">
+                        <div class="flex items-center gap-2 text-sm text-slate-600">
+                            <i class="fas fa-info-circle" style="color: #0066CC;"></i>
+                            <span>При подтверждении заявки остатки на складе будут автоматически уменьшены</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-3" style="background: #f8fafc;">
+                    <button onclick="closeOrderModal()" class="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">
+                        Отмена
+                    </button>
+                    <button onclick="saveOrder()" class="btn-zenit text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg transition-all hover:scale-105">
+                        Создать заявку
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Modal -->
+    <div id="product-modal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-overlay absolute inset-0" onclick="closeProductModal()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg pointer-events-auto">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between" style="background: linear-gradient(135deg, #f0f7ff 0%, #e6f0ff 100%);">
+                    <h3 class="font-bold text-lg text-slate-800" id="product-modal-title">Новый товар</h3>
+                    <button onclick="closeProductModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-200 transition-colors">
+                        <i class="fas fa-times text-slate-500"></i>
+                    </button>
+                </div>
+                <div class="p-6 space-y-4">
+                    <input type="hidden" id="product-id">
+                    <div class="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Артикул</label>
+                        <p class="text-sm text-slate-500">Артикул генерируется автоматически</p>
+                        <p class="text-lg font-mono font-semibold text-slate-800 mt-1" id="product-sku-display">-</p>
+                        <input type="hidden" id="product-sku">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Наименование *</label>
+                        <input type="text" id="product-name" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500" placeholder="Напр: Футболка с логотипом">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Категория</label>
+                        <select id="product-category" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500">
+                            <option value="Сувенирная продукция">Сувенирная продукция</option>
+                            <option value="Экипировка">Экипировка</option>
+                            <option value="Мат. ценности для матчей">Мат. ценности для матчей</option>
+                            <option value="Административная продукция">Административная продукция</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Остаток *</label>
+                            <input type="number" id="product-stock" min="0" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500" placeholder="0">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Мин. запас</label>
+                            <input type="number" id="product-min-stock" min="0" value="10" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500" placeholder="10">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Описание</label>
+                        <textarea id="product-description" rows="3" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500" placeholder="Описание товара..."></textarea>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
+                    <button onclick="closeProductModal()" class="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">
+                        Отмена
+                    </button>
+                    <button onclick="saveProduct()" class="btn-zenit text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg transition-all hover:scale-105">
+                        Сохранить
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employee Modal -->
+    <div id="employee-modal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-overlay absolute inset-0" onclick="closeEmployeeModal()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg pointer-events-auto">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between" style="background: linear-gradient(135deg, #f0f7ff 0%, #e6f0ff 100%);">
+                    <h3 class="font-bold text-lg text-slate-800">Новый сотрудник</h3>
+                    <button onclick="closeEmployeeModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-200 transition-colors">
+                        <i class="fas fa-times text-slate-500"></i>
+                    </button>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">ФИО *</label>
+                        <input type="text" id="employee-name" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500" placeholder="Иванов Иван Иванович">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Отдел *</label>
+                            <input type="text" id="employee-department" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500" placeholder="HR, IT, Продажи...">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Должность</label>
+                            <input type="text" id="employee-position" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500" placeholder="Менеджер">
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
+                    <button onclick="closeEmployeeModal()" class="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">
+                        Отмена
+                    </button>
+                    <button onclick="saveEmployee()" class="btn-zenit text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg transition-all hover:scale-105">
+                        Сохранить
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Account Modal -->
+    <div id="account-modal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-overlay absolute inset-0" onclick="closeAccountModal()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg pointer-events-auto">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between" style="background: linear-gradient(135deg, #f0f7ff 0%, #e6f0ff 100%);">
+                    <h3 class="font-bold text-lg text-slate-800" id="account-modal-title">Новая учетная запись</h3>
+                    <button onclick="closeAccountModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-200 transition-colors">
+                        <i class="fas fa-times text-slate-500"></i>
+                    </button>
+                </div>
+                <div class="p-6 space-y-4">
+                    <input type="hidden" id="account-id">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Логин *</label>
+                        <input type="text" id="account-username" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500" placeholder="ivanov">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Пароль *</label>
+                        <input type="password" id="account-password" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500" placeholder="Минимум 6 символов">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Сотрудник *</label>
+                        <select id="account-employee" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500">
+                            <option value="">Выберите сотрудника</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Роль</label>
+                        <select id="account-role" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500">
+                            <option value="employee">Сотрудник</option>
+                            <option value="admin">Администратор</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Статус</label>
+                        <select id="account-status" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zenit-500">
+                            <option value="active">Активна</option>
+                            <option value="blocked">Заблокирована</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
+                    <button onclick="closeAccountModal()" class="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">
+                        Отмена
+                    </button>
+                    <button onclick="saveAccount()" class="btn-zenit text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg transition-all hover:scale-105">
+                        Сохранить
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Details Modal -->
+    <div id="order-details-modal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-overlay absolute inset-0" onclick="closeOrderDetailsModal()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl pointer-events-auto">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between" style="background: linear-gradient(135deg, #f0f7ff 0%, #e6f0ff 100%);">
+                    <h3 class="font-bold text-lg text-slate-800">Детали заявки <span id="detail-order-id"></span></h3>
+                    <button onclick="closeOrderDetailsModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-200 transition-colors">
+                        <i class="fas fa-times text-slate-500"></i>
+                    </button>
+                </div>
+                <div class="p-6" id="order-details-content">
+                </div>
+                <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-3" id="order-details-actions">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== AUTH & DATA STORE ====================
+        let currentUser = null;
+        let selectedOrderItems = [];
+
+        let data = {
+            products: [],
+            employees: [],
+            orders: [],
+            accounts: []
+        };
+
+        const CATEGORIES = ['Сувенирная продукция', 'Экипировка', 'Мат. ценности для матчей', 'Административная продукция'];
+        const CATEGORY_PREFIXES = {
+            'Сувенирная продукция': 'SU',
+            'Экипировка': 'EK',
+            'Мат. ценности для матчей': 'MM',
+            'Административная продукция': 'AD'
+        };
+
+        // SKU Counter per category
+        let skuCounters = {};
+
+        function generateSKU(category) {
+            const prefix = CATEGORY_PREFIXES[category] || 'XX';
+            if (!skuCounters[prefix]) {
+                // Find max existing SKU number for this prefix
+                const existing = data.products.filter(p => p.sku && p.sku.startsWith(prefix + '-'));
+                const maxNum = existing.reduce((max, p) => {
+                    const match = p.sku.match(/-(\d+)$/);
+                    return match ? Math.max(max, parseInt(match[1])) : max;
+                }, 0);
+                skuCounters[prefix] = maxNum;
+            }
+            skuCounters[prefix]++;
+            return `${prefix}-${String(skuCounters[prefix]).padStart(3, '0')}`;
+        }
+
+        // ==================== DEMO DATA ====================
+        function loadDemoData() {
+            const saved = localStorage.getItem('warehouse_zenit_v1');
+            if (saved) {
+                data = JSON.parse(saved);
+                return;
+            }
+
+            data.products = [
+                { id: 1, sku: 'SU-001', name: 'Футболка с логотипом (черная)', category: 'Сувенирная продукция', stock: 45, minStock: 10, description: 'Размеры: S, M, L, XL' },
+                { id: 2, sku: 'SU-002', name: 'Футболка с логотипом (белая)', category: 'Сувенирная продукция', stock: 32, minStock: 10, description: 'Размеры: S, M, L, XL' },
+                { id: 3, sku: 'AD-001', name: 'Ручка шариковая с логотипом', category: 'Административная продукция', stock: 8, minStock: 15, description: 'Синяя, металлический корпус' },
+                { id: 4, sku: 'AD-002', name: 'Блокнот A5 с логотипом', category: 'Административная продукция', stock: 120, minStock: 20, description: '80 листов, клетка' },
+                { id: 5, sku: 'EK-001', name: 'Футбольные бутсы Nike', category: 'Экипировка', stock: 12, minStock: 5, description: 'Размеры 40-45' },
+                { id: 6, sku: 'EK-002', name: 'Гетры командные', category: 'Экипировка', stock: 25, minStock: 10, description: 'Взрослые/детские' },
+                { id: 7, sku: 'MM-001', name: 'Флаги угловые (комплект)', category: 'Мат. ценности для матчей', stock: 3, minStock: 5, description: '4 шт + сумка' },
+                { id: 8, sku: 'MM-002', name: 'Мяч игровой FIFA Quality', category: 'Мат. ценности для матчей', stock: 6, minStock: 3, description: 'Размер 5' },
+                { id: 9, sku: 'AD-003', name: 'Папка-регистратор', category: 'Административная продукция', stock: 50, minStock: 15, description: 'A4, с логотипом' },
+                { id: 10, sku: 'SU-003', name: 'Power Bank 10000 mAh', category: 'Сувенирная продукция', stock: 3, minStock: 5, description: 'С логотипом, белый' },
+                { id: 11, sku: 'SU-004', name: 'Кружка керамическая', category: 'Сувенирная продукция', stock: 67, minStock: 15, description: '350 мл, с логотипом' },
+                { id: 12, sku: 'EK-003', name: 'Форма вратарская', category: 'Экипировка', stock: 5, minStock: 3, description: 'Размеры M, L, XL' },
+                { id: 13, sku: 'SU-005', name: 'Брелок с логотипом', category: 'Сувенирная продукция', stock: 150, minStock: 30, description: 'Металл, с эмалью' },
+                { id: 14, sku: 'EK-004', name: 'Наколенники волейбольные', category: 'Экипировка', stock: 20, minStock: 8, description: 'Размеры S, M, L' },
+                { id: 15, sku: 'MM-003', name: 'Сетка волейбольная', category: 'Мат. ценности для матчей', stock: 2, minStock: 2, description: 'Профессиональная' },
+                { id: 16, sku: 'AD-004', name: 'Визитница с логотипом', category: 'Административная продукция', stock: 40, minStock: 10, description: 'Кожзам, черная' }
+            ];
+
+            data.employees = [
+                { id: 1, name: 'Иванов Иван Иванович', department: 'IT', position: 'Разработчик' },
+                { id: 2, name: 'Петрова Анна Сергеевна', department: 'HR', position: 'HR-менеджер' },
+                { id: 3, name: 'Сидоров Алексей Петрович', department: 'Продажи', position: 'Менеджер по продажам' },
+                { id: 4, name: 'Козлова Мария Дмитриевна', department: 'Маркетинг', position: 'Маркетолог' },
+                { id: 5, name: 'Новиков Дмитрий Александрович', department: 'IT', position: 'DevOps' }
+            ];
+
+            data.accounts = [
+                { id: 1, username: 'admin', password: 'admin123', employeeId: null, role: 'admin', status: 'active' },
+                { id: 2, username: 'ivanov', password: 'pass123', employeeId: 1, role: 'employee', status: 'active' },
+                { id: 3, username: 'petrova', password: 'pass123', employeeId: 2, role: 'employee', status: 'active' },
+                { id: 4, username: 'sidorov', password: 'pass123', employeeId: 3, role: 'employee', status: 'active' }
+            ];
+
+            data.orders = [
+                {
+                    id: 'ORD-2024-001',
+                    date: '2024-01-15',
+                    employeeId: 1,
+                    status: 'completed',
+                    basis: 'Приказ №15 от 10.01.2024',
+                    purpose: 'Выдача сувенирной продукции сотруднику',
+                    purposeDesc: 'Ежегодная выдача корпоративной продукции',
+                    items: [
+                        { productId: 1, quantity: 2 },
+                        { productId: 4, quantity: 1 }
+                    ]
+                },
+                {
+                    id: 'ORD-2024-002',
+                    date: '2024-01-16',
+                    employeeId: 2,
+                    status: 'completed',
+                    basis: 'Распоряжение HR-001',
+                    purpose: 'Подготовка к корпоративному мероприятию',
+                    purposeDesc: 'Корпоративное мероприятие 20.01.2024',
+                    items: [
+                        { productId: 3, quantity: 5 },
+                        { productId: 11, quantity: 2 }
+                    ]
+                },
+                {
+                    id: 'ORD-2024-003',
+                    date: '2024-01-17',
+                    employeeId: 3,
+                    status: 'pending',
+                    basis: 'Заявка от отдела продаж',
+                    purpose: 'Презентация для клиентов',
+                    purposeDesc: 'Встреча с партнерами 25.01.2024',
+                    items: [
+                        { productId: 10, quantity: 1 }
+                    ]
+                },
+                {
+                    id: 'ORD-2024-004',
+                    date: '2024-01-18',
+                    employeeId: 4,
+                    status: 'pending',
+                    basis: 'Приказ №18 от 15.01.2024',
+                    purpose: 'Офисное снабжение',
+                    purposeDesc: 'Пополнение запасов канцелярии',
+                    items: [
+                        { productId: 2, quantity: 1 },
+                        { productId: 9, quantity: 2 }
+                    ]
+                },
+                {
+                    id: 'ORD-2024-005',
+                    date: '2024-02-01',
+                    employeeId: 1,
+                    status: 'completed',
+                    basis: 'Заявка на экипировку',
+                    purpose: 'Подготовка к товарищескому матчу',
+                    purposeDesc: 'Товарищеский матч 05.02.2024',
+                    items: [
+                        { productId: 5, quantity: 1 },
+                        { productId: 6, quantity: 2 }
+                    ]
+                },
+                {
+                    id: 'ORD-2024-006',
+                    date: '2024-02-10',
+                    employeeId: 3,
+                    status: 'completed',
+                    basis: 'Распоряжение тренерского штаба',
+                    purpose: 'Чемпионат, домашний матч',
+                    purposeDesc: 'Матч с Динамо Москва',
+                    items: [
+                        { productId: 7, quantity: 1 },
+                        { productId: 8, quantity: 2 },
+                        { productId: 12, quantity: 1 }
+                    ]
+                }
+            ];
+
+            // Apply stock changes from completed orders
+            data.orders.forEach(order => {
+                if (order.status === 'completed') {
+                    order.items.forEach(item => {
+                        const product = data.products.find(p => p.id === item.productId);
+                        if (product) product.stock -= item.quantity;
+                    });
+                }
+            });
+
+            saveData();
+        }
+
+        function saveData() {
+            localStorage.setItem('warehouse_zenit_v1', JSON.stringify(data));
+        }
+
+        function resetData() {
+            if (confirm('Вы уверены? Все данные будут удалены и загружены демо-данные.')) {
+                localStorage.removeItem('warehouse_zenit_v1');
+                loadDemoData();
+                renderAll();
+                showNotification('Данные сброшены', 'Восстановлены демонстрационные данные');
+            }
+        }
+
+        // ==================== AUTH ====================
+        function performLogin() {
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+
+            const account = data.accounts.find(a => a.username === username && a.password === password && a.status === 'active');
+
+            if (!account) {
+                document.getElementById('login-error').classList.remove('hidden');
+                return;
+            }
+
+            currentUser = account;
+            document.getElementById('login-error').classList.add('hidden');
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('app-container').classList.remove('hidden');
+
+            let displayName = 'Администратор';
+            if (account.employeeId) {
+                const emp = data.employees.find(e => e.id === account.employeeId);
+                if (emp) displayName = emp.name;
+            }
+            document.getElementById('current-user-name').textContent = displayName;
+            document.getElementById('current-user-role').textContent = account.role === 'admin' ? 'Администратор' : 'Сотрудник';
+
+            const adminOnly = document.querySelectorAll('.admin-only');
+            adminOnly.forEach(el => {
+                if (account.role === 'admin') {
+                    el.classList.remove('hidden');
+                } else {
+                    el.classList.add('hidden');
+                }
+            });
+
+            showSection('dashboard');
+            showNotification('Добро пожаловать', `Вы вошли как ${displayName}`);
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById('app-container').classList.add('hidden');
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('login-username').value = '';
+            document.getElementById('login-password').value = '';
+            document.getElementById('login-error').classList.add('hidden');
+        }
+
+        // ==================== NAVIGATION ====================
+        function showSection(section) {
+            document.querySelectorAll('[id^="section-"]').forEach(el => el.classList.add('hidden'));
+            document.getElementById('section-' + section).classList.remove('hidden');
+
+            document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+            const navBtn = document.getElementById('nav-' + section);
+            if (navBtn) navBtn.classList.add('active');
+
+            const titles = {
+                dashboard: 'Дашборд',
+                orders: 'Заявки на выдачу',
+                products: 'Номенклатура',
+                analysis: 'Анализ уходимости',
+                employees: 'Сотрудники',
+                accounts: 'Учетные записи'
+            };
+            document.getElementById('page-title').textContent = titles[section] || 'Дашборд';
+
+            renderAll();
+
+            if (section === 'analysis') {
+                const today = new Date();
+                const monthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+                document.getElementById('analysis-date-to').value = today.toISOString().split('T')[0];
+                document.getElementById('analysis-date-from').value = monthAgo.toISOString().split('T')[0];
+            }
+        }
+
+        // ==================== RENDER FUNCTIONS ====================
+        function renderAll() {
+            renderDashboard();
+            renderOrders();
+            renderProducts();
+            renderEmployees();
+            renderAccounts();
+        }
+
+        function renderDashboard() {
+            const completedOrders = data.orders.filter(o => o.status === 'completed');
+            const pendingOrders = data.orders.filter(o => o.status === 'pending');
+            const lowStockProducts = data.products.filter(p => p.stock <= p.minStock);
+
+            document.getElementById('stat-total-orders').textContent = completedOrders.length;
+            document.getElementById('stat-pending-orders').textContent = pendingOrders.length;
+            document.getElementById('stat-low-stock').textContent = lowStockProducts.length;
+            document.getElementById('stat-total-products').textContent = data.products.length;
+
+            const recentOrders = [...data.orders].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+            const recentTbody = document.getElementById('recent-orders-table');
+            recentTbody.innerHTML = recentOrders.map(order => {
+                const emp = data.employees.find(e => e.id === order.employeeId);
+                const statusClass = {
+                    completed: 'status-completed',
+                    pending: 'status-pending',
+                    cancelled: 'status-cancelled'
+                }[order.status];
+                const statusText = {
+                    completed: 'Выдано',
+                    pending: 'В ожидании',
+                    cancelled: 'Отменено'
+                }[order.status];
+
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors cursor-pointer" onclick="showOrderDetails('${order.id}')">
+                        <td class="px-6 py-3 font-medium text-slate-800">${order.id}</td>
+                        <td class="px-6 py-3 text-slate-600">${emp ? emp.name : 'Неизвестно'}</td>
+                        <td class="px-6 py-3 text-slate-500">${formatDate(order.date)}</td>
+                        <td class="px-6 py-3"><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    </tr>
+                `;
+            }).join('');
+
+            const lowStockTbody = document.getElementById('low-stock-table');
+            lowStockTbody.innerHTML = lowStockProducts.map(product => {
+                const stockClass = product.stock === 0 ? 'stock-low' : (product.stock <= product.minStock / 2 ? 'stock-low' : 'stock-medium');
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-3 font-medium text-slate-800">${product.name}</td>
+                        <td class="px-6 py-3 text-slate-500 font-mono text-xs">${product.sku}</td>
+                        <td class="px-6 py-3 ${stockClass}">${product.stock} шт.</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderOrders() {
+            const search = document.getElementById('order-search')?.value?.toLowerCase() || '';
+            const statusFilter = document.getElementById('order-status-filter')?.value || '';
+
+            let filtered = data.orders;
+
+            if (currentUser && currentUser.role !== 'admin' && currentUser.employeeId) {
+                filtered = filtered.filter(o => o.employeeId === currentUser.employeeId);
+            }
+
+            if (search) {
+                filtered = filtered.filter(o => {
+                    const emp = data.employees.find(e => e.id === o.employeeId);
+                    return o.id.toLowerCase().includes(search) || 
+                           (emp && emp.name.toLowerCase().includes(search)) ||
+                           (o.basis && o.basis.toLowerCase().includes(search)) ||
+                           (o.purpose && o.purpose.toLowerCase().includes(search));
+                });
+            }
+            if (statusFilter) {
+                filtered = filtered.filter(o => o.status === statusFilter);
+            }
+
+            filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            document.getElementById('orders-count').textContent = filtered.length;
+
+            const tbody = document.getElementById('orders-table');
+            tbody.innerHTML = filtered.map(order => {
+                const emp = data.employees.find(e => e.id === order.employeeId);
+                const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0);
+                const statusClass = {
+                    completed: 'status-completed',
+                    pending: 'status-pending',
+                    cancelled: 'status-cancelled'
+                }[order.status];
+                const statusText = {
+                    completed: 'Выдано',
+                    pending: 'В ожидании',
+                    cancelled: 'Отменено'
+                }[order.status];
+
+                const isAdmin = currentUser && currentUser.role === 'admin';
+
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-3 font-medium text-slate-800">${order.id}</td>
+                        <td class="px-6 py-3 text-slate-600">${formatDate(order.date)}</td>
+                        <td class="px-6 py-3 text-slate-800">${emp ? emp.name : 'Неизвестно'}</td>
+                        <td class="px-6 py-3 text-slate-500">${emp ? emp.department : '-'}</td>
+                        <td class="px-6 py-3 text-slate-600 max-w-xs truncate" title="${order.basis || ''}">${order.basis || '-'}</td>
+                        <td class="px-6 py-3 text-slate-600 max-w-xs truncate" title="${order.purpose || ''}">${order.purpose || '-'}</td>
+                        <td class="px-6 py-3 text-slate-600">${order.items.length} поз.</td>
+                        <td class="px-6 py-3 text-slate-800 font-medium">${totalItems} шт.</td>
+                        <td class="px-6 py-3"><span class="status-badge ${statusClass}">${statusText}</span></td>
+                        <td class="px-6 py-3">
+                            <div class="flex items-center gap-2">
+                                <button onclick="showOrderDetails('${order.id}')" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 hover:text-zenit-600 transition-colors" title="Просмотр">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                ${isAdmin && order.status === 'pending' ? `
+                                    <button onclick="completeOrder('${order.id}')" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-green-50 text-slate-500 hover:text-green-600 transition-colors" title="Выдать">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    <button onclick="cancelOrder('${order.id}')" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600 transition-colors" title="Отменить">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                ` : ''}
+                                ${isAdmin ? `
+                                    <button onclick="deleteOrder('${order.id}')" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600 transition-colors" title="Удалить">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('') || '<tr><td colspan="10" class="px-6 py-8 text-center text-slate-400">Заявки не найдены</td></tr>';
+        }
+
+        function renderProducts() {
+            const search = document.getElementById('product-search')?.value?.toLowerCase() || '';
+            const categoryFilter = document.getElementById('product-category-filter')?.value || '';
+
+            let filtered = data.products;
+            if (search) {
+                filtered = filtered.filter(p => 
+                    p.name.toLowerCase().includes(search) || 
+                    p.sku.toLowerCase().includes(search) ||
+                    p.category.toLowerCase().includes(search)
+                );
+            }
+            if (categoryFilter) {
+                filtered = filtered.filter(p => p.category === categoryFilter);
+            }
+
+            const isAdmin = currentUser && currentUser.role === 'admin';
+
+            const tbody = document.getElementById('products-table');
+            tbody.innerHTML = filtered.map(product => {
+                const stockClass = product.stock === 0 ? 'stock-low' : 
+                                  (product.stock <= product.minStock ? 'stock-medium' : 'stock-ok');
+                const stockText = product.stock === 0 ? 'Нет в наличии' : 
+                                 (product.stock <= product.minStock ? 'Заканчивается' : 'В наличии');
+
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-3 font-mono text-xs text-slate-500">${product.sku}</td>
+                        <td class="px-6 py-3 font-medium text-slate-800">${product.name}</td>
+                        <td class="px-6 py-3 text-slate-600">${product.category}</td>
+                        <td class="px-6 py-3 ${stockClass}">${product.stock} шт.</td>
+                        <td class="px-6 py-3 text-slate-500">${product.minStock} шт.</td>
+                        <td class="px-6 py-3">
+                            <span class="status-badge ${product.stock === 0 ? 'status-cancelled' : (product.stock <= product.minStock ? 'status-pending' : 'status-completed')}">
+                                ${stockText}
+                            </span>
+                        </td>
+                        <td class="px-6 py-3">
+                            <div class="flex items-center gap-2">
+                                ${isAdmin ? `
+                                    <button onclick="editProduct(${product.id})" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 hover:text-zenit-600 transition-colors" title="Редактировать">
+                                        <i class="fas fa-pencil-alt"></i>
+                                    </button>
+                                    <button onclick="adjustStock(${product.id})" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors" title="Изменить остаток">
+                                        <i class="fas fa-cubes"></i>
+                                    </button>
+                                    <button onclick="deleteProduct(${product.id})" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600 transition-colors" title="Удалить">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                ` : `
+                                    <span class="text-xs text-slate-400">Просмотр</span>
+                                `}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('') || '<tr><td colspan="7" class="px-6 py-8 text-center text-slate-400">Товары не найдены</td></tr>';
+        }
+
+        function renderEmployees() {
+            const tbody = document.getElementById('employees-table');
+            tbody.innerHTML = data.employees.map(emp => {
+                const orderCount = data.orders.filter(o => o.employeeId === emp.id).length;
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-3 font-medium text-slate-800">${emp.name}</td>
+                        <td class="px-6 py-3 text-slate-600">${emp.department}</td>
+                        <td class="px-6 py-3 text-slate-500">${emp.position || '-'}</td>
+                        <td class="px-6 py-3 text-slate-800 font-medium">${orderCount}</td>
+                        <td class="px-6 py-3">
+                            <button onclick="deleteEmployee(${emp.id})" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600 transition-colors" title="Удалить">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('') || '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Сотрудники не найдены</td></tr>';
+        }
+
+        function renderAccounts() {
+            const tbody = document.getElementById('accounts-table');
+            tbody.innerHTML = data.accounts.map(acc => {
+                const emp = acc.employeeId ? data.employees.find(e => e.id === acc.employeeId) : null;
+                const roleText = acc.role === 'admin' ? 'Администратор' : 'Сотрудник';
+                const roleClass = acc.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700';
+                const statusText = acc.status === 'active' ? 'Активна' : 'Заблокирована';
+                const statusClass = acc.status === 'active' ? 'status-completed' : 'status-cancelled';
+
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-3 font-medium text-slate-800 font-mono">${acc.username}</td>
+                        <td class="px-6 py-3 text-slate-800">${emp ? emp.name : (acc.role === 'admin' ? 'Администратор' : '-')}</td>
+                        <td class="px-6 py-3 text-slate-600">${emp ? emp.department : '-'}</td>
+                        <td class="px-6 py-3"><span class="status-badge ${roleClass}">${roleText}</span></td>
+                        <td class="px-6 py-3"><span class="status-badge ${statusClass}">${statusText}</span></td>
+                        <td class="px-6 py-3">
+                            <div class="flex items-center gap-2">
+                                <button onclick="editAccount(${acc.id})" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 hover:text-zenit-600 transition-colors" title="Редактировать">
+                                    <i class="fas fa-pencil-alt"></i>
+                                </button>
+                                <button onclick="toggleAccountStatus(${acc.id})" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-amber-50 text-slate-500 hover:text-amber-600 transition-colors" title="${acc.status === 'active' ? 'Заблокировать' : 'Разблокировать'}">
+                                    <i class="fas ${acc.status === 'active' ? 'fa-ban' : 'fa-check'}"></i>
+                                </button>
+                                <button onclick="deleteAccount(${acc.id})" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600 transition-colors" title="Удалить">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('') || '<tr><td colspan="6" class="px-6 py-8 text-center text-slate-400">Учетные записи не найдены</td></tr>';
+        }
+
+        // ==================== ORDER MANAGEMENT ====================
+        function openNewOrderModal() {
+            document.getElementById('order-modal').classList.remove('hidden');
+            document.getElementById('order-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('order-basis').value = '';
+            document.getElementById('order-purpose').value = '';
+            document.getElementById('order-purpose-desc').value = '';
+
+            // Populate employees
+            const empSelect = document.getElementById('order-employee');
+            empSelect.innerHTML = '<option value="">Выберите сотрудника</option>' +
+                data.employees.map(e => `<option value="${e.id}">${e.name} (${e.department})</option>`).join('');
+
+            if (currentUser && currentUser.role !== 'admin' && currentUser.employeeId) {
+                empSelect.value = currentUser.employeeId;
+                empSelect.disabled = true;
+            } else {
+                empSelect.disabled = false;
+            }
+
+            // Reset selected items
+            selectedOrderItems = [];
+            document.getElementById('selected-items-count').textContent = '0 позиций';
+            document.getElementById('order-product-search').value = '';
+            document.getElementById('order-product-category-filter').value = '';
+
+            renderOrderProductList();
+            renderSelectedOrderItems();
+        }
+
+        function closeOrderModal() {
+            document.getElementById('order-modal').classList.add('hidden');
+            selectedOrderItems = [];
+        }
+
+        function renderOrderProductList(searchTerm = '', categoryFilter = '') {
+            const container = document.getElementById('order-product-list');
+            let filtered = data.products.filter(p => p.stock > 0);
+
+            if (searchTerm) {
+                const term = searchTerm.toLowerCase();
+                filtered = filtered.filter(p => p.name.toLowerCase().includes(term));
+            }
+
+            if (categoryFilter) {
+                filtered = filtered.filter(p => p.category === categoryFilter);
+            }
+
+            // Group by category
+            const grouped = {};
+            CATEGORIES.forEach(cat => grouped[cat] = []);
+            filtered.forEach(p => {
+                if (grouped[p.category]) grouped[p.category].push(p);
+            });
+
+            let html = '';
+            CATEGORIES.forEach(cat => {
+                const products = grouped[cat];
+                if (products.length === 0) return;
+
+                html += `
+                    <div class="category-group">
+                        <div class="category-group-header">
+                            <i class="fas fa-folder-open"></i>
+                            ${cat}
+                        </div>
+                        <div class="space-y-1">
+                `;
+
+                products.forEach(product => {
+                    const isSelected = selectedOrderItems.some(i => i.productId === product.id);
+                    html += `
+                        <div class="flex items-center justify-between p-2 bg-white rounded border border-slate-100 hover:border-zenit-300 transition-colors">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-mono text-slate-400">${product.sku}</span>
+                                <span class="text-sm text-slate-700">${product.name}</span>
+                                <span class="text-xs text-slate-500">(${product.stock} шт.)</span>
+                            </div>
+                            ${isSelected ? `
+                                <span class="text-xs text-green-600 font-medium"><i class="fas fa-check mr-1"></i>Добавлен</span>
+                            ` : `
+                                <button onclick="addProductToOrder(${product.id})" class="text-xs px-2 py-1 rounded bg-zenit-500 text-white hover:bg-zenit-600 transition-colors">
+                                    <i class="fas fa-plus mr-1"></i>Добавить
+                                </button>
+                            `}
+                        </div>
+                    `;
+                });
+
+                html += '</div></div>';
+            });
+
+            if (html === '') {
+                html = '<p class="text-sm text-slate-400 text-center py-4">Товары не найдены</p>';
+            }
+
+            container.innerHTML = html;
+        }
+
+        function searchOrderProducts(value) {
+            const categoryFilter = document.getElementById('order-product-category-filter').value;
+            renderOrderProductList(value, categoryFilter);
+        }
+
+        function filterOrderProductsByCategory() {
+            const searchTerm = document.getElementById('order-product-search').value;
+            const categoryFilter = document.getElementById('order-product-category-filter').value;
+            renderOrderProductList(searchTerm, categoryFilter);
+        }
+
+        function addProductToOrder(productId) {
+            const product = data.products.find(p => p.id === productId);
+            if (!product) return;
+
+            if (selectedOrderItems.some(i => i.productId === productId)) {
+                return; // Already added
+            }
+
+            selectedOrderItems.push({ productId: productId, quantity: 1 });
+            renderOrderProductList(
+                document.getElementById('order-product-search').value,
+                document.getElementById('order-product-category-filter').value
+            );
+            renderSelectedOrderItems();
+        }
+
+        function removeProductFromOrder(productId) {
+            selectedOrderItems = selectedOrderItems.filter(i => i.productId !== productId);
+            renderOrderProductList(
+                document.getElementById('order-product-search').value,
+                document.getElementById('order-product-category-filter').value
+            );
+            renderSelectedOrderItems();
+        }
+
+        function updateOrderItemQuantity(productId, quantity) {
+            const item = selectedOrderItems.find(i => i.productId === productId);
+            if (item) {
+                item.quantity = Math.max(1, parseInt(quantity) || 1);
+            }
+            renderSelectedOrderItems();
+        }
+
+        function renderSelectedOrderItems() {
+            const container = document.getElementById('order-items-container');
+            document.getElementById('selected-items-count').textContent = `${selectedOrderItems.length} позиций`;
+
+            if (selectedOrderItems.length === 0) {
+                container.innerHTML = '<p class="text-sm text-slate-400 text-center py-4">Выберите товары из списка выше</p>';
+                return;
+            }
+
+            container.innerHTML = selectedOrderItems.map(item => {
+                const product = data.products.find(p => p.id === item.productId);
+                return `
+                    <div class="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200 slide-in">
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-slate-800">${product.name}</p>
+                            <p class="text-xs text-slate-500">${product.sku} | ${product.category} | Доступно: ${product.stock} шт.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="updateOrderItemQuantity(${item.productId}, ${item.quantity - 1})" class="w-7 h-7 flex items-center justify-center rounded bg-slate-100 hover:bg-slate-200 text-slate-600">
+                                <i class="fas fa-minus text-xs"></i>
+                            </button>
+                            <input type="number" min="1" max="${product.stock}" value="${item.quantity}" 
+                                onchange="updateOrderItemQuantity(${item.productId}, this.value)"
+                                class="w-16 px-2 py-1 border border-slate-200 rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-zenit-500">
+                            <button onclick="updateOrderItemQuantity(${item.productId}, ${item.quantity + 1})" class="w-7 h-7 flex items-center justify-center rounded bg-slate-100 hover:bg-slate-200 text-slate-600">
+                                <i class="fas fa-plus text-xs"></i>
+                            </button>
+                        </div>
+                        <button onclick="removeProductFromOrder(${item.productId})" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-100 text-slate-400 hover:text-red-500 transition-colors">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function saveOrder() {
+            const employeeId = parseInt(document.getElementById('order-employee').value);
+            const date = document.getElementById('order-date').value;
+            const basis = document.getElementById('order-basis').value.trim();
+            const purpose = document.getElementById('order-purpose').value.trim();
+            const purposeDesc = document.getElementById('order-purpose-desc').value.trim();
+
+            if (!employeeId || !date || !basis || !purpose) {
+                alert('Заполните все обязательные поля');
+                return;
+            }
+
+            if (selectedOrderItems.length === 0) {
+                alert('Добавьте хотя бы одну позицию');
+                return;
+            }
+
+            // Validate stock
+            for (const item of selectedOrderItems) {
+                const product = data.products.find(p => p.id === item.productId);
+                if (!product) continue;
+                if (product.stock < item.quantity) {
+                    alert(`Недостаточно остатка для "${product.name}". Доступно: ${product.stock}`);
+                    return;
+                }
+            }
+
+            const orderId = 'ORD-' + new Date().getFullYear() + '-' + String(data.orders.length + 1).padStart(3, '0');
+
+            const order = {
+                id: orderId,
+                date,
+                employeeId,
+                status: 'pending',
+                basis,
+                purpose,
+                purposeDesc,
+                items: selectedOrderItems.map(i => ({ productId: i.productId, quantity: i.quantity }))
+            };
+
+            data.orders.push(order);
+            saveData();
+            closeOrderModal();
+            renderAll();
+
+            showNotification('Заявка создана', `Заявка ${orderId} успешно создана и ожидает выдачи`);
+        }
+
+        function completeOrder(orderId) {
+            const order = data.orders.find(o => o.id === orderId);
+            if (!order || order.status !== 'pending') return;
+
+            for (const item of order.items) {
+                const product = data.products.find(p => p.id === item.productId);
+                if (!product || product.stock < item.quantity) {
+                    alert(`Невозможно выдать. Недостаточно "${product?.name || 'товара'}" на складе.`);
+                    return;
+                }
+            }
+
+            order.items.forEach(item => {
+                const product = data.products.find(p => p.id === item.productId);
+                if (product) product.stock -= item.quantity;
+            });
+
+            order.status = 'completed';
+            saveData();
+            renderAll();
+            showNotification('Заявка выдана', `Заявка ${orderId} выполнена. Остатки обновлены.`);
+        }
+
+        function cancelOrder(orderId) {
+            const order = data.orders.find(o => o.id === orderId);
+            if (!order || order.status !== 'pending') return;
+
+            if (!confirm('Отменить заявку?')) return;
+
+            order.status = 'cancelled';
+            saveData();
+            renderAll();
+            showNotification('Заявка отменена', `Заявка ${orderId} отменена`);
+        }
+
+        function deleteOrder(orderId) {
+            if (!confirm('Удалить заявку?')) return;
+
+            const order = data.orders.find(o => o.id === orderId);
+            if (order && order.status === 'completed') {
+                order.items.forEach(item => {
+                    const product = data.products.find(p => p.id === item.productId);
+                    if (product) product.stock += item.quantity;
+                });
+            }
+
+            data.orders = data.orders.filter(o => o.id !== orderId);
+            saveData();
+            renderAll();
+        }
+
+        function showOrderDetails(orderId) {
+            const order = data.orders.find(o => o.id === orderId);
+            if (!order) return;
+
+            const emp = data.employees.find(e => e.id === order.employeeId);
+            const statusClass = {
+                completed: 'status-completed',
+                pending: 'status-pending',
+                cancelled: 'status-cancelled'
+            }[order.status];
+            const statusText = {
+                completed: 'Выдано',
+                pending: 'В ожидании',
+                cancelled: 'Отменено'
+            }[order.status];
+
+            document.getElementById('detail-order-id').textContent = order.id;
+
+            let itemsHtml = order.items.map(item => {
+                const product = data.products.find(p => p.id === item.productId);
+                return `
+                    <div class="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg flex items-center justify-center text-white" style="background: linear-gradient(135deg, #0066CC 0%, #00AEEF 100%);">
+                                <i class="fas fa-box"></i>
+                            </div>
+                            <div>
+                                <p class="font-medium text-slate-800">${product ? product.name : 'Неизвестный товар'}</p>
+                                <p class="text-xs text-slate-500">${product ? product.sku : '-'} | ${product ? product.category : '-'}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-medium text-slate-800">${item.quantity} шт.</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('order-details-content').innerHTML = `
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-slate-50 rounded-lg p-3">
+                            <p class="text-xs text-slate-500 mb-1">Сотрудник</p>
+                            <p class="font-medium text-slate-800">${emp ? emp.name : 'Неизвестно'}</p>
+                            <p class="text-xs text-slate-500">${emp ? emp.department + ', ' + emp.position : ''}</p>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-3">
+                            <p class="text-xs text-slate-500 mb-1">Дата и статус</p>
+                            <p class="font-medium text-slate-800">${formatDate(order.date)}</p>
+                            <span class="status-badge ${statusClass} mt-1 inline-block">${statusText}</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-slate-50 rounded-lg p-3">
+                            <p class="text-xs text-slate-500 mb-1">Основание</p>
+                            <p class="text-sm text-slate-800">${order.basis || '-'}</p>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-3">
+                            <p class="text-xs text-slate-500 mb-1">Цели выдачи</p>
+                            <p class="text-sm text-slate-800">${order.purpose || '-'}</p>
+                            ${order.purposeDesc ? `<p class="text-xs text-slate-500 mt-1">${order.purposeDesc}</p>` : ''}
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="font-medium text-slate-800 mb-2">Позиции заявки</h4>
+                        <div class="bg-slate-50 rounded-lg p-4">
+                            ${itemsHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const isAdmin = currentUser && currentUser.role === 'admin';
+            let actionsHtml = '';
+            if (isAdmin && order.status === 'pending') {
+                actionsHtml = `
+                    <button onclick="completeOrder('${order.id}'); closeOrderDetailsModal()" class="btn-zenit text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg transition-all hover:scale-105">
+                        <i class="fas fa-check mr-2"></i>Выдать
+                    </button>
+                    <button onclick="cancelOrder('${order.id}'); closeOrderDetailsModal()" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-medium shadow-lg transition-all hover:scale-105">
+                        <i class="fas fa-ban mr-2"></i>Отменить
+                    </button>
+                `;
+            }
+            if (isAdmin) {
+                actionsHtml += `
+                    <button onclick="deleteOrder('${order.id}'); closeOrderDetailsModal()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium shadow-lg transition-all hover:scale-105">
+                        <i class="fas fa-trash-alt mr-2"></i>Удалить
+                    </button>
+                `;
+            }
+
+            document.getElementById('order-details-actions').innerHTML = actionsHtml || '<span class="text-sm text-slate-400">Нет доступных действий</span>';
+            document.getElementById('order-details-modal').classList.remove('hidden');
+        }
+
+        function closeOrderDetailsModal() {
+            document.getElementById('order-details-modal').classList.add('hidden');
+        }
+
+        // ==================== PRODUCT MANAGEMENT ====================
+        function openProductModal(productId = null) {
+            document.getElementById('product-modal').classList.remove('hidden');
+
+            if (productId) {
+                const product = data.products.find(p => p.id === productId);
+                document.getElementById('product-modal-title').textContent = 'Редактировать товар';
+                document.getElementById('product-id').value = product.id;
+                document.getElementById('product-sku-display').textContent = product.sku;
+                document.getElementById('product-sku').value = product.sku;
+                document.getElementById('product-name').value = product.name;
+                document.getElementById('product-category').value = product.category;
+                document.getElementById('product-stock').value = product.stock;
+                document.getElementById('product-min-stock').value = product.minStock;
+                document.getElementById('product-description').value = product.description || '';
+            } else {
+                document.getElementById('product-modal-title').textContent = 'Новый товар';
+                document.getElementById('product-id').value = '';
+                // Generate preview SKU
+                const defaultCat = 'Сувенирная продукция';
+                const previewSku = generateSKU(defaultCat);
+                document.getElementById('product-sku-display').textContent = previewSku + ' (будет сгенерирован)';
+                document.getElementById('product-sku').value = '';
+                document.getElementById('product-name').value = '';
+                document.getElementById('product-category').value = defaultCat;
+                document.getElementById('product-stock').value = '';
+                document.getElementById('product-min-stock').value = 10;
+                document.getElementById('product-description').value = '';
+            }
+        }
+
+        function closeProductModal() {
+            document.getElementById('product-modal').classList.add('hidden');
+        }
+
+        function saveProduct() {
+            const id = document.getElementById('product-id').value;
+            const name = document.getElementById('product-name').value.trim();
+            const category = document.getElementById('product-category').value;
+            const stock = parseInt(document.getElementById('product-stock').value) || 0;
+            const minStock = parseInt(document.getElementById('product-min-stock').value) || 0;
+            const description = document.getElementById('product-description').value.trim();
+
+            if (!name) {
+                alert('Введите наименование товара');
+                return;
+            }
+
+            if (id) {
+                const product = data.products.find(p => p.id === parseInt(id));
+                const oldCategory = product.category;
+                product.name = name;
+                product.category = category;
+                product.stock = stock;
+                product.minStock = minStock;
+                product.description = description;
+                // SKU stays the same on edit
+            } else {
+                const newId = Math.max(...data.products.map(p => p.id), 0) + 1;
+                const sku = generateSKU(category);
+                data.products.push({
+                    id: newId,
+                    sku,
+                    name,
+                    category,
+                    stock,
+                    minStock,
+                    description
+                });
+            }
+
+            saveData();
+            closeProductModal();
+            renderProducts();
+            showNotification('Товар сохранен', name);
+        }
+
+        function editProduct(id) {
+            openProductModal(id);
+        }
+
+        function adjustStock(id) {
+            const product = data.products.find(p => p.id === id);
+            const newStock = prompt(`Текущий остаток: ${product.stock}\nВведите новый остаток:`, product.stock);
+            if (newStock !== null && !isNaN(newStock)) {
+                product.stock = parseInt(newStock);
+                saveData();
+                renderAll();
+                showNotification('Остаток обновлен', `${product.name}: ${product.stock} шт.`);
+            }
+        }
+
+        function deleteProduct(id) {
+            if (!confirm('Удалить товар?')) return;
+            data.products = data.products.filter(p => p.id !== id);
+            saveData();
+            renderProducts();
+        }
+
+        // ==================== EMPLOYEE MANAGEMENT ====================
+        function openEmployeeModal() {
+            document.getElementById('employee-modal').classList.remove('hidden');
+            document.getElementById('employee-name').value = '';
+            document.getElementById('employee-department').value = '';
+            document.getElementById('employee-position').value = '';
+        }
+
+        function closeEmployeeModal() {
+            document.getElementById('employee-modal').classList.add('hidden');
+        }
+
+        function saveEmployee() {
+            const name = document.getElementById('employee-name').value.trim();
+            const department = document.getElementById('employee-department').value.trim();
+            const position = document.getElementById('employee-position').value.trim();
+
+            if (!name || !department) {
+                alert('Заполните обязательные поля');
+                return;
+            }
+
+            const newId = Math.max(...data.employees.map(e => e.id), 0) + 1;
+            data.employees.push({ id: newId, name, department, position });
+            saveData();
+            closeEmployeeModal();
+            renderEmployees();
+        }
+
+        function deleteEmployee(id) {
+            if (!confirm('Удалить сотрудника?')) return;
+            data.employees = data.employees.filter(e => e.id !== id);
+            saveData();
+            renderEmployees();
+        }
+
+        // ==================== ACCOUNT MANAGEMENT ====================
+        function openAccountModal(accountId = null) {
+            document.getElementById('account-modal').classList.remove('hidden');
+            document.getElementById('account-modal-title').textContent = accountId ? 'Редактировать учетную запись' : 'Новая учетная запись';
+
+            const empSelect = document.getElementById('account-employee');
+            empSelect.innerHTML = '<option value="">Выберите сотрудника</option>' +
+                data.employees.map(e => `<option value="${e.id}">${e.name} (${e.department})</option>`).join('');
+
+            if (accountId) {
+                const acc = data.accounts.find(a => a.id === accountId);
+                document.getElementById('account-id').value = acc.id;
+                document.getElementById('account-username').value = acc.username;
+                document.getElementById('account-password').value = '';
+                document.getElementById('account-password').placeholder = 'Оставьте пустым, чтобы не менять';
+                document.getElementById('account-employee').value = acc.employeeId || '';
+                document.getElementById('account-role').value = acc.role;
+                document.getElementById('account-status').value = acc.status;
+            } else {
+                document.getElementById('account-id').value = '';
+                document.getElementById('account-username').value = '';
+                document.getElementById('account-password').value = '';
+                document.getElementById('account-password').placeholder = 'Минимум 6 символов';
+                document.getElementById('account-employee').value = '';
+                document.getElementById('account-role').value = 'employee';
+                document.getElementById('account-status').value = 'active';
+            }
+        }
+
+        function closeAccountModal() {
+            document.getElementById('account-modal').classList.add('hidden');
+        }
+
+        function saveAccount() {
+            const id = document.getElementById('account-id').value;
+            const username = document.getElementById('account-username').value.trim().toLowerCase();
+            const password = document.getElementById('account-password').value;
+            const employeeId = document.getElementById('account-employee').value ? parseInt(document.getElementById('account-employee').value) : null;
+            const role = document.getElementById('account-role').value;
+            const status = document.getElementById('account-status').value;
+
+            if (!username) {
+                alert('Введите логин');
+                return;
+            }
+
+            if (!id && !password) {
+                alert('Введите пароль');
+                return;
+            }
+
+            if (password && password.length < 6) {
+                alert('Пароль должен быть не менее 6 символов');
+                return;
+            }
+
+            const existing = data.accounts.find(a => a.username === username && a.id !== (id ? parseInt(id) : 0));
+            if (existing) {
+                alert('Логин уже занят');
+                return;
+            }
+
+            if (id) {
+                const acc = data.accounts.find(a => a.id === parseInt(id));
+                acc.username = username;
+                if (password) acc.password = password;
+                acc.employeeId = employeeId;
+                acc.role = role;
+                acc.status = status;
+            } else {
+                const newId = Math.max(...data.accounts.map(a => a.id), 0) + 1;
+                data.accounts.push({
+                    id: newId,
+                    username,
+                    password,
+                    employeeId,
+                    role,
+                    status
+                });
+            }
+
+            saveData();
+            closeAccountModal();
+            renderAccounts();
+            showNotification('Учетная запись сохранена', `Логин: ${username}`);
+        }
+
+        function editAccount(id) {
+            openAccountModal(id);
+        }
+
+        function toggleAccountStatus(id) {
+            const acc = data.accounts.find(a => a.id === id);
+            if (!acc) return;
+            acc.status = acc.status === 'active' ? 'blocked' : 'active';
+            saveData();
+            renderAccounts();
+            showNotification('Статус обновлен', `Учетная запись ${acc.username} ${acc.status === 'active' ? 'активирована' : 'заблокирована'}`);
+        }
+
+        function deleteAccount(id) {
+            if (!confirm('Удалить учетную запись?')) return;
+            data.accounts = data.accounts.filter(a => a.id !== id);
+            saveData();
+            renderAccounts();
+        }
+
+        // ==================== ANALYSIS ====================
+        let categoryChartInstance = null;
+        let topProductsChartInstance = null;
+
+        function generateAnalysis() {
+            const dateFrom = document.getElementById('analysis-date-from').value;
+            const dateTo = document.getElementById('analysis-date-to').value;
+            const categoryFilter = document.getElementById('analysis-category').value;
+
+            if (!dateFrom || !dateTo) {
+                alert('Выберите период');
+                return;
+            }
+
+            let periodOrders = data.orders.filter(o => {
+                if (o.status !== 'completed') return false;
+                const d = new Date(o.date);
+                return d >= new Date(dateFrom) && d <= new Date(dateTo + 'T23:59:59');
+            });
+
+            const productConsumption = {};
+            periodOrders.forEach(order => {
+                order.items.forEach(item => {
+                    if (!productConsumption[item.productId]) {
+                        productConsumption[item.productId] = { quantity: 0, orders: 0 };
+                    }
+                    productConsumption[item.productId].quantity += item.quantity;
+                    productConsumption[item.productId].orders += 1;
+                });
+            });
+
+            let reportData = Object.entries(productConsumption).map(([productId, stats]) => {
+                const product = data.products.find(p => p.id === parseInt(productId));
+                if (!product) return null;
+                return {
+                    productId: parseInt(productId),
+                    name: product.name,
+                    sku: product.sku,
+                    category: product.category,
+                    stock: product.stock,
+                    quantity: stats.quantity,
+                    orders: stats.orders
+                };
+            }).filter(Boolean);
+
+            if (categoryFilter) {
+                reportData = reportData.filter(r => r.category === categoryFilter);
+            }
+
+            reportData.sort((a, b) => b.quantity - a.quantity);
+
+            document.getElementById('analysis-results').classList.remove('hidden');
+
+            const tbody = document.getElementById('analysis-table');
+            tbody.innerHTML = reportData.map(item => {
+                const monthsDiff = Math.max(1, Math.ceil((new Date(dateTo) - new Date(dateFrom)) / (1000 * 60 * 60 * 24 * 30)));
+                const avgPerMonth = (item.quantity / monthsDiff).toFixed(1);
+
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-3 font-medium text-slate-800">${item.name}</td>
+                        <td class="px-6 py-3 font-mono text-xs text-slate-500">${item.sku}</td>
+                        <td class="px-6 py-3 text-slate-600">${item.category}</td>
+                        <td class="px-6 py-3 text-slate-800 font-medium">${item.quantity} шт.</td>
+                        <td class="px-6 py-3 text-slate-600">${item.orders}</td>
+                        <td class="px-6 py-3 ${item.stock <= 5 ? 'stock-low' : 'stock-ok'}">${item.stock} шт.</td>
+                        <td class="px-6 py-3 text-slate-600">${avgPerMonth} шт./мес</td>
+                    </tr>
+                `;
+            }).join('') || '<tr><td colspan="7" class="px-6 py-8 text-center text-slate-400">Нет данных за выбранный период</td></tr>';
+
+            renderCharts(reportData, dateFrom, dateTo);
+        }
+
+        function renderCharts(reportData, dateFrom, dateTo) {
+            const categoryData = {};
+            reportData.forEach(item => {
+                if (!categoryData[item.category]) categoryData[item.category] = 0;
+                categoryData[item.category] += item.quantity;
+            });
+
+            const catCtx = document.getElementById('category-chart').getContext('2d');
+            if (categoryChartInstance) categoryChartInstance.destroy();
+
+            categoryChartInstance = new Chart(catCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(categoryData),
+                    datasets: [{
+                        data: Object.values(categoryData),
+                        backgroundColor: ['#0066CC', '#00AEEF', '#10b981', '#f59e0b'],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ': ' + context.parsed + ' шт.';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            const topProducts = reportData.slice(0, 10);
+            const topCtx = document.getElementById('top-products-chart').getContext('2d');
+            if (topProductsChartInstance) topProductsChartInstance.destroy();
+
+            topProductsChartInstance = new Chart(topCtx, {
+                type: 'bar',
+                data: {
+                    labels: topProducts.map(p => p.name.length > 20 ? p.name.substring(0, 20) + '...' : p.name),
+                    datasets: [{
+                        label: 'Выдано (шт.)',
+                        data: topProducts.map(p => p.quantity),
+                        backgroundColor: '#0066CC',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { stepSize: 1 } },
+                        x: { ticks: { maxRotation: 45, minRotation: 45 } }
+                    }
+                }
+            });
+        }
+
+        function exportAnalysisToExcel() {
+            const dateFrom = document.getElementById('analysis-date-from').value;
+            const dateTo = document.getElementById('analysis-date-to').value;
+
+            let csv = 'Анализ уходимости продукции\n';
+            csv += `Период: ${dateFrom} - ${dateTo}\n\n`;
+            csv += 'Товар,Артикул,Категория,Выдано (шт.),Кол-во заявок,Остаток,Средний расход/мес\n';
+
+            const rows = document.querySelectorAll('#analysis-table tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 7) {
+                    const vals = Array.from(cells).map(c => c.textContent.trim().replace(' шт.', '').replace(' шт./мес', ''));
+                    csv += `"${vals[0]}","${vals[1]}","${vals[2]}",${vals[3]},${vals[4]},${vals[5]},${vals[6]}\n`;
+                }
+            });
+
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Анализ_уходимости_${dateFrom}_${dateTo}.csv`;
+            link.click();
+
+            showNotification('Экспорт завершен', 'Отчет сохранен в CSV');
+        }
+
+        // ==================== FILTER FUNCTIONS ====================
+        function filterOrders() {
+            renderOrders();
+        }
+
+        function filterProducts() {
+            renderProducts();
+        }
+
+        // ==================== EXPORT ====================
+        function exportToExcel() {
+            let csv = 'Номер заявки,Дата,Сотрудник,Отдел,Основание,Цели,Статус,Товар,Артикул,Категория,Количество\n';
+
+            data.orders.forEach(order => {
+                const emp = data.employees.find(e => e.id === order.employeeId);
+                const statusText = { completed: 'Выдано', pending: 'В ожидании', cancelled: 'Отменено' }[order.status];
+
+                order.items.forEach(item => {
+                    const product = data.products.find(p => p.id === item.productId);
+                    csv += `"${order.id}","${order.date}","${emp ? emp.name : ''}","${emp ? emp.department : ''}","${order.basis || ''}","${order.purpose || ''}","${statusText}","${product ? product.name : ''}","${product ? product.sku : ''}","${product ? product.category : ''}",${item.quantity}\n`;
+                });
+            });
+
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Заявки_склад_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+
+            showNotification('Экспорт завершен', 'Файл CSV сохранен');
+        }
+
+        // ==================== UTILITIES ====================
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('ru-RU');
+        }
+
+        function showNotification(title, message) {
+            const notif = document.createElement('div');
+            notif.className = 'fixed bottom-4 right-4 bg-white rounded-xl shadow-2xl border border-slate-200 p-4 z-50 slide-in max-w-sm';
+            notif.style.borderLeft = '4px solid #0066CC';
+            notif.innerHTML = `
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center text-white flex-shrink-0" style="background: linear-gradient(135deg, #0066CC 0%, #00AEEF 100%);">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-slate-800 text-sm">${title}</h4>
+                        <p class="text-sm text-slate-500 mt-1">${message}</p>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" class="text-slate-400 hover:text-slate-600">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(notif);
+            setTimeout(() => notif.remove(), 4000);
+        }
+
+        // ==================== INITIALIZE ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDemoData();
+            document.getElementById('current-date').textContent = new Date().toLocaleDateString('ru-RU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('login-username').focus();
+            document.getElementById('login-password').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') performLogin();
+            });
+        });
+    </script>
+</body>
+</html>
